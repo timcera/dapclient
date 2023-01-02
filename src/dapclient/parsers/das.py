@@ -9,6 +9,7 @@ existing dataset using the ``add_attributes`` function.
 import ast
 import operator
 import re
+from functools import reduce
 
 from dapclient.lib import walk
 from dapclient.parsers import SimpleParser

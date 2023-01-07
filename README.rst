@@ -38,15 +38,13 @@ bandwidth and time.
 
 Why fork pydap?
 ---------------
-* Simplify the codebase
-  * Remove the server side code
-  * Update the code to use modern python 3.8+
+* Simplify the codebase by remove the server side code
+* Update the code to use modern python 3.8+
 * Up-to-date pypi and conda packages
 
-This version has no additional features, and it has no tests since pydap uses
-the server for it's tests.  My immediate goal is to have pip and conda
-packages to support my tsgettoolbox package.  I will add tests and features as
-time (and pull requests!) allow.
+This version has no additional features, and it only has a few tests.  My
+immediate goal is to have pip and conda packages to support my tsgettoolbox
+package.  I will add tests and features as time (and pull requests!) allow.
 
 Quickstart
 ----------

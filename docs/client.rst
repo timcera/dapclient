@@ -16,7 +16,7 @@ multidimensional array. Here's a simple example where we access the `COADS
 <http://www.ncdc.noaa.gov/oa/climate/coads/>`_ climatology from the official
 OPeNDAP server:
 
-.. doctest::
+::
 
     >>> from dapclient.client import open_url
     >>> dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
@@ -31,7 +31,7 @@ is a *Structure* -- a fancy dictionary that stores other variables. We can
 check the names of the store variables like we would do with a Python
 dictionary:
 
-.. doctest::
+::
 
     >>> list(dataset.keys())
     ['COADSX', 'COADSY', 'TIME', 'SST', 'AIRT', 'UWND', 'VWND']
@@ -40,7 +40,7 @@ Let's work with the ``SST`` variable; we can reference it using the usual
 dictionary syntax of ``dataset['SST']``, or using the "lazy" syntax
 ``dataset.SST``:
 
-.. doctest::
+::
 
     >>> sst = dataset["SST"]  # or dataset.SST
     >>> type(sst)
@@ -49,7 +49,7 @@ dictionary syntax of ``dataset['SST']``, or using the "lazy" syntax
 Note that the variable is of type ``GridType``, a multidimensional array with
 specific axes defining each of its dimensions:
 
-.. doctest::
+::
 
     >>> sst.dimensions
     ('TIME', 'COADSY', 'COADSX')
@@ -59,7 +59,7 @@ specific axes defining each of its dimensions:
 Each map is also, in turn, a variable that can be accessed using the same
 syntax used for Structures:
 
-.. doctest::
+::
 
     >>> sst.TIME
     <BaseType with data BaseProxy('http://test.opendap.org/dap/data/nc/coads_climatology.nc', 'SST.TIME', dtype('>f8'), (12,), (slice(None, None, None),))>
@@ -69,7 +69,7 @@ a multidimensional array, with a specific shape and type. Even though no data
 have been downloaded up to this point, we can introspect these attributes from
 the axes or from the Grid itself:
 
-.. doctest::
+::
 
     >>> sst.shape
     (12, 90, 180)
@@ -84,7 +84,7 @@ We can also introspect the variable attributes; they are stored in an attribute
 appropriately called ``attributes``, and they can also be accessed with
 a "lazy" syntax:
 
-.. doctest::
+::
 
     >>> import pprint
     >>> pprint.pprint(sst.attributes)
@@ -100,7 +100,7 @@ Finally, we can also download some data. To download data we simply access it
 like we would access a `Numpy <http://numpy.scipy.org/>`_ array, and the data
 for the corresponding subset will be dowloaded on the fly from the server:
 
-.. doctest::
+::
 
     >>> sst.shape
     (12, 90, 180)
@@ -111,7 +111,7 @@ for the corresponding subset will be dowloaded on the fly from the server:
 The data itself can be accessed in the ``array`` attribute of the Grid, and
 also on the individual axes:
 
-.. doctest::
+::
 
     >>> grid.array[:]
     <BaseType with data array([[[ -1.26285708e+00,  -9.99999979e+33,  -9.99999979e+33,
@@ -134,7 +134,7 @@ also on the individual axes:
 
 Alternatively, we could have dowloaded the data directly, skipping the axes:
 
-.. doctest::
+::
 
     >>> print(sst.array[0, 10:14, 10:14].data)
     [[[ -1.26285708e+00  -9.99999979e+33  -9.99999979e+33  -9.99999979e+33]
@@ -149,7 +149,7 @@ attempting to retrieve both the data and the coordinate axes of a variable. The
 work around is to simply disable the retrieval of coordinate axes by using the
 ``output_grid`` option to open url:
 
-.. doctest::
+::
 
     >>> from dapclient.client import open_url
     >>> dataset = open_url(
@@ -170,7 +170,7 @@ we're going to access data from the `Argo project
 <http://www.argo.ucsd.edu/>`_, consisting of profiles made by autonomous buoys
 drifting on the ocean:
 
-.. doctest:: python
+:: python
 
     >>> from dapclient.client import open_url
     >>> dataset = open_url("http://dapper.pmel.noaa.gov/dapper/argo/argo_all.cdp")
@@ -186,7 +186,7 @@ measurements along a z axis.
 The first thing we'd like to do is limit our region; let's work with a small
 region in the Tropical Atlantic:
 
-.. doctest:: python
+:: python
 
     >>> type(dataset.location)
     <class 'dapclient.model.SequenceType'>
@@ -234,7 +234,7 @@ retrives data for all variables.
 
 We can explicitly select just the first 5 profiles from our sequence:
 
-.. doctest:: python
+:: python
 
     >>> my_location = my_location[:5]
     >>> len(my_location["_id"].iterdata())
@@ -423,7 +423,7 @@ When you open a remote dataset, the ``DatasetType`` object has a special
 attribute named ``functions`` that can be used to invoke any server-side
 functions. Here's an example of using the ``geogrid`` function from Hyrax:
 
-.. doctest::
+::
 
     >>> dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     >>> new_dataset = dataset.functions.geogrid(dataset.SST, 10, 20, -10, 60)
@@ -447,7 +447,7 @@ You can pass any URL to the ``open_url`` function, together with any valid
 constraint expression. Here's an example of restricting values for the months
 of January, April, July and October:
 
-.. doctest::
+::
 
     >>> dataset = open_url(
     ...     "http://test.opendap.org/dap/data/nc/coads_climatology.nc?SST[0:3:11][0:1:89][0:1:179]"
@@ -458,7 +458,7 @@ of January, April, July and October:
 This can be extremely useful for server side-processing; for example, we can
 create and access a new variable ``A`` in this dataset, equal to twice ``SSH``:
 
-.. doctest::
+::
 
     >>> dataset = open_url(
     ...     "http://hycom.coaps.fsu.edu:8080/thredds/dodsC/las/dynamic/data_A5CDC5CAF9D810618C39646350F727FF.jnl_expr_%7B%7D%7Blet%20A=SSH*2%7D?A"
@@ -478,7 +478,7 @@ Accessing raw data
 The client module has a special function called ``open_dods``, used to access
 raw data from a DODS response:
 
-.. doctest::
+::
 
     >>> from dapclient.client import open_dods
     >>> dataset = open_dods_url(
@@ -498,7 +498,7 @@ functions directly. By default this method downloads the data directly, and
 skips metadata from the DAS response; if you want to investigate and introspect
 datasets you should set the ``get_metadata`` parameter to true:
 
-.. doctest::
+::
 
     >>> dataset = open_dods(
     ...     "http://test.opendap.org/dap/data/nc/coads_climatology.nc.dods?SST[0:3:11][0:1:89][0:1:179]",

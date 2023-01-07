@@ -15,7 +15,7 @@ Here an example of creating one of these objects:
 
 .. note:: Prior to dapclient 3.2, the name argument was optional for all date types. Since dapclient 3.2, it is mandatory.
 
-.. doctest::
+::
 
     >>> from dapclient.model import *
     >>> import numpy as np
@@ -23,14 +23,14 @@ Here an example of creating one of these objects:
 
 All dapclient types have five attributes in common. The first one is the ``name`` of the variable; in this case, our variable is called "a":
 
-.. doctest::
+::
 
     >>> a.name
     'a'
 
 Note that there's a difference between the variable name (the local name ``a``) and its attribute ``name``; in this example they are equal, but we could reference our object using any other name:
 
-.. doctest::
+::
 
     >>> b = a  # b now points to a
     >>> b.name
@@ -38,7 +38,7 @@ Note that there's a difference between the variable name (the local name ``a``) 
 
 We can use special characters for the variable names; they will be quoted accordingly:
 
-.. doctest::
+::
 
     >>> c = BaseType(name="long & complicated")
     >>> c.name
@@ -46,7 +46,7 @@ We can use special characters for the variable names; they will be quoted accord
 
 The second attribute is called ``id``. In the examples we've seen so far, ``id`` and ``name`` are equal:
 
-.. doctest::
+::
 
     >>> a.name
     'a'
@@ -61,7 +61,7 @@ This is because the ``id`` is used to show the position of the variable in a giv
 examples the variables do not belong to any datasets. First let's store our variables in a container
 object called ``StructureType``. A ``StructureType`` is a special type of ordered dictionary that holds other dapclient types:
 
-.. doctest::
+::
 
     >>> s = StructureType("s")
     >>> s["a"] = a
@@ -72,7 +72,7 @@ object called ``StructureType``. A ``StructureType`` is a special type of ordere
 
 Note that the variable name has to be used as its key on the ``StructureType``. This can be easily remedied:
 
-.. doctest::
+::
 
     >>> s[c.name] = c
 
@@ -80,7 +80,7 @@ There is a special derivative of the ``StructureType`` called ``DatasetType``, w
 The difference between the two is that there should be only one ``DatasetType``, but
 it may contain any number of ``StructureType`` objects, which can be deeply nested. Let's create our dataset object:
 
-.. doctest::
+::
 
     >>> dataset = DatasetType(name="example")
     >>> dataset["s"] = s
@@ -95,7 +95,7 @@ Note that for objects on the first level of the dataset, like ``s``, the id is i
 Deeper objects, like ``a`` which is stored in ``s``, have their id calculated by joining the names of the
 variables with a period. One detail is that we can access variables stored in a structure using a "lazy" syntax like this:
 
-.. doctest::
+::
 
     >>> dataset.s.a.id
     's.a'
@@ -104,21 +104,21 @@ The third common attribute that variables share is called ``attributes``, which 
 This attribute is a dictionary of keys and values, and the values themselves can also be dictionaries.
 For our variable ``a`` we have:
 
-.. doctest::
+::
 
     >>> a.attributes
     {'long_name': 'variable a'}
 
 These attributes can be accessed lazily directly from the variable:
 
-.. doctest::
+::
 
     >>> a.long_name
     'variable a'
 
 But if you want to create a new attribute you'll have to insert it directly into ``attributes``:
 
-.. doctest::
+::
 
     >>> a.history = "Created by me"
     >>> a.attributes
@@ -152,7 +152,7 @@ This representation will vary depending on the variable type.
 For the simple ``BaseType`` objects the ``data`` attributes is usually a Numpy array,
 though we can also use a Numpy scalar or Python number:
 
-.. doctest::
+::
 
     >>> a = BaseType(name="a", data=np.array(1))
     >>> a.data
@@ -164,7 +164,7 @@ though we can also use a Numpy scalar or Python number:
 
 Note that starting from dapclient 3.2 the datatype is inferred from the input data:
 
-.. doctest::
+::
 
     >>> a.dtype
     dtype('int64')
@@ -173,7 +173,7 @@ Note that starting from dapclient 3.2 the datatype is inferred from the input da
 
 When you *slice* a ``BaseType`` array, the slice is simply passed onto the data attribute. So we may have:
 
-.. doctest::
+::
 
     >>> b[-1]
     <BaseType with data array(3)>
@@ -191,7 +191,7 @@ we assign a special object which behaves like an array and acts as a *proxy* to 
 
 Here's an example:
 
-.. doctest::
+::
 
     >>> from dapclient.handlers.dap import BaseProxyDap2
     >>> pseudo_array = BaseProxyDap2(
@@ -226,7 +226,7 @@ In the example above, the data is only downloaded in the last line, when the pse
 
 A ``StructureType`` holds no data; instead, its ``data`` attribute is a property that collects data from the children variables:
 
-.. doctest::
+::
 
     >>> s = StructureType(name="s")
     >>> s[a.name] = a
@@ -240,7 +240,7 @@ A ``StructureType`` holds no data; instead, its ``data`` attribute is a property
 
 The opposite is also true; it's possible to specify the structure data and have it propagated to the children:
 
-.. doctest::
+::
 
     >>> s.data = (1, 2)
     >>> print(s.a.data)
@@ -256,7 +256,7 @@ The same is true for objects of ``DatasetType``, since the dataset is simply the
 A ``SequenceType`` object is a special kind of ``StructureType`` holding sequential data.
 Here's an example of a sequence holding the variables ``a`` and ``c`` that we created before:
 
-.. doctest::
+::
 
     >>> s = SequenceType(name="s")
     >>> s[a.name] = a
@@ -264,7 +264,7 @@ Here's an example of a sequence holding the variables ``a`` and ``c`` that we cr
 
 Let's add some data to our sequence. This can be done by setting a structured numpy array to the data attribute:
 
-.. doctest::
+::
 
     >>> print(s)
     <SequenceType with children 'a', 'long%20%26%20complicated'>
@@ -281,7 +281,7 @@ This will be more complicated when encountering nested sequences, but for flat s
 
 We can also iterate over the ``SequenceType``. In this case, it will return a series of tuples with the data:
 
-.. doctest::
+::
 
     >>> for record in s.iterdata():
     ...     print(record)
@@ -292,7 +292,7 @@ We can also iterate over the ``SequenceType``. In this case, it will return a se
 
 Prior to dapclient 3.2.2, this approach was not possible and one had to iterate directly over ``SequenceType``:
 
-.. doctest::
+::
 
     >>> for record in s:
     ...     print(record)
@@ -306,7 +306,7 @@ This approach will be deprecated in dapclient 3.4.
 The ``SequenceType`` behaves pretty much like `record arrays <http://docs.scipy.org/doc/numpy/user/basics.rec.html>`_ from
 Numpy, since we can reference them by column (``s['a']``) or by index:
 
-.. doctest::
+::
 
     >>> s[1].data
     (2, 20)
@@ -340,7 +340,7 @@ dapclient defines a "protocol" called ``IterData``, which is simply any object t
 The base implementation works by wrapping data from a basic Numpy array.
 And here is an example of how we would use it:
 
-.. doctest::
+::
 
     >>> from dapclient.handlers.lib import IterData
     >>> s.data = IterData(np.array([(1, 2), (10, 20)]), s)
@@ -357,7 +357,7 @@ And here is an example of how we would use it:
 
 One can also iterate directly over the ``IterData`` object to obtain the data:
 
-.. doctest::
+::
 
     >>> for record in s2:
     ...     print(record)
@@ -380,7 +380,7 @@ returns the data of all its children: the n-dimensional array followed by *n* ma
 
 Here is a simple example:
 
-.. doctest::
+::
 
     >>> g = GridType(name="g")
     >>> data = np.arange(6)
@@ -396,7 +396,7 @@ Here is a simple example:
 
 Grid behave like arrays in that they can be sliced. When this happens, a new ``GridType`` is returned with the proper data and axes:
 
-.. doctest::
+::
 
     >>> print(g)
     <GridType with array 'a' and maps 'x', 'y'>
@@ -407,7 +407,7 @@ Grid behave like arrays in that they can be sliced. When this happens, a new ``G
 
 It is possible to disable this feature (some older servers might not handle it nicely):
 
-.. doctest::
+::
 
     >>> g = GridType(name="g")
     >>> g.set_output_grid(False)

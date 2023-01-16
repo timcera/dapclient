@@ -39,7 +39,7 @@ def raise_for_status(response):
             headers=response.headers,
             comment=response.body,
         )
-    elif response.status_code >= 300:
+    if response.status_code >= 300:
         try:
             text = response.text
         except AttributeError:
@@ -91,9 +91,6 @@ def get_response(req, application, verify=True):
         # to bypass SSL verification.
         # This approach is never ideal but it appears to be the only option
         # here.
-        # This only works in python 2.7 and >=3.5. Python 3.4
-        # does not require it because by default contexts are not
-        # verified.
         try:
             _create_default_https_ctx = ssl._create_default_https_context
             _create_unverified_ctx = ssl._create_unverified_context
@@ -123,13 +120,12 @@ def create_request(url, session=None, timeout=DEFAULT_TIMEOUT, verify=True):
         # the final cookies to set up a webob Request object that will
         # be guaranteed to have all the needed credentials:
         return create_request_from_session(url, session, timeout=timeout, verify=verify)
-    else:
-        # If a session object was not passed, we simply pass a new
-        # requests.Session() object. The requests library allows the
-        # handling of redirects that are not naturally handled by Webob.
-        return create_request_from_session(
-            url, requests.Session(), timeout=timeout, verify=verify
-        )
+    # If a session object was not passed, we simply pass a new
+    # requests.Session() object. The requests library allows the
+    # handling of redirects that are not naturally handled by Webob.
+    return create_request_from_session(
+        url, requests.Session(), timeout=timeout, verify=verify
+    )
 
 
 def create_request_from_session(url, session, timeout=DEFAULT_TIMEOUT, verify=True):
@@ -158,5 +154,5 @@ def create_request_from_session(url, session, timeout=DEFAULT_TIMEOUT, verify=Tr
         req = Request.blank(url)
         req.environ["webob.client.timeout"] = timeout
         return req
-    except Timeout:
-        raise HTTPError("Timeout")
+    except Timeout as exc:
+        raise HTTPError("Timeout") from exc

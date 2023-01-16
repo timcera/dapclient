@@ -97,9 +97,9 @@ def open_file(file_path, das_path=None):
     if extension == "dods":
         return open_dods_file(file_path=file_path, das_path=das_path)
     elif extension == "dap":
-        return open_dap_file(file_path=file_path, das_path=das_path)
+        return open_dap_file(file_path=file_path)
     elif extension == "dds":
-        pass
+        return None
     elif extension == "dmr":
         return open_dmr_file(file_path=file_path)
 
@@ -131,17 +131,16 @@ def open_dmr_file(file_path):
     return dataset
 
 
-def open_dap_file(file_path, das_path=None):
-    """Open a file downloaded from a `.dap` (dap4) response, retunring a dataset
-    Optionally, read also the `.das` response to assign attributes to the
-    dataset."""
+def open_dap_file(file_path):
+    """Open a file downloaded from a `.dap` (dap4) response, returning
+    a dataset Optionally, read also the `.das` response to assign attributes to
+    the dataset."""
     dataset = open_dmr_file(file_path)
 
     with open(file_path, "rb") as f:
         dmr_len = get_dmr_length(file_path)
-        # if f.peek()[0:2] == b'\x04\x00':
         f.seek(dmr_len)
-        crlf = f.read(4)
+        _ = f.read(4)  # toss first 4 bytes
         dapclient.handlers.dap.unpack_dap4_data(f, dataset)
     return dataset
 

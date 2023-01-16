@@ -59,7 +59,7 @@ class DASParser(SimpleParser):
         attribute(s).
 
         """
-        type = self.consume(r"[^\s]+")
+        ltype = self.consume(r"[^\s]+")
         name = self.consume(r"[^\s]+")
 
         values = []
@@ -74,7 +74,7 @@ class DASParser(SimpleParser):
                 """
             )
 
-            if type.lower() in ["string", "url"]:
+            if ltype.lower() in ["string", "url"]:
                 value = str(value).strip('"')
             elif value.lower() in ["nan", "nan.", "-nan"]:
                 value = float("nan")

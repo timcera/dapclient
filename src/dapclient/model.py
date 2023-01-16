@@ -172,6 +172,7 @@ import operator
 import warnings
 from collections import OrderedDict
 from collections.abc import Mapping
+from contextlib import suppress
 from functools import reduce
 
 import numpy as np
@@ -200,13 +201,13 @@ class DapType:
         return f"DapType({', '.join(map(repr, [self.name, self.attributes]))})"
 
     # The id.
-    def _set_id(self, id):
-        self._id = id
+    def _set_id(self, lid):
+        self._id = lid
 
         # Update children id.
         for child in self.children():
             # pass
-            child.id = f"{id}.{child.name}"
+            child.id = f"{lid}.{child.name}"
 
     def _get_id(self):
         return self._id
@@ -230,8 +231,10 @@ class DapType:
         """
         try:
             return self.attributes[attr]
-        except (KeyError, TypeError):
-            raise AttributeError(f"'{type(self)}' object has no attribute '{attr}'")
+        except (KeyError, TypeError) as exc:
+            raise AttributeError(
+                f"'{type(self)}' object has no attribute '{attr}'"
+            ) from exc
 
     def children(self):
         """Return iterator over children."""
@@ -239,7 +242,6 @@ class DapType:
 
 
 class BaseType(DapType):
-
     """A thin wrapper over Numpy arrays."""
 
     def __init__(
@@ -254,7 +256,7 @@ class BaseType(DapType):
         self._shape = ()
 
     def __repr__(self):
-        return f"<{type(self).__name__} with data {repr(self.data)}>"
+        return f"<{type(self).__name__} with data {self.data!r}>"
 
     @property
     def dtype(self):
@@ -311,8 +313,8 @@ class BaseType(DapType):
     def __lt__(self, other):
         return self.data < other
 
-    # Implement the sequence and iter protocols.
     def __getitem__(self, index):
+        """Implement the sequence and iter protocols."""
         out = copy.copy(self)
         out.data = self._get_data_index(index)
         if type(self.data).__name__ == "BaseProxyDap4":
@@ -344,8 +346,7 @@ class BaseType(DapType):
     def _get_data_index(self, index=Ellipsis):
         if self._is_string_dtype and isinstance(self._data, np.ndarray):
             return np.vectorize(decode_np_strings)(self._data[index])
-        else:
-            return self._data[index]
+        return self._data[index]
 
     def _get_data(self):
         return self._data
@@ -353,10 +354,8 @@ class BaseType(DapType):
     def _set_data(self, data):
         self._data = data
         if np.isscalar(data):
-            # Convert scalar data to
-            # numpy scalar, otherwise
-            # ``.dtype`` and ``.shape``
-            # methods will fail.
+            # Convert scalar data to numpy scalar, otherwise ``.dtype`` and
+            # ``.shape`` methods will fail.
             self._data = np.array(data)
 
     data = property(_get_data, _set_data)
@@ -424,12 +423,11 @@ class StructureType(DapType, Mapping):
     def __getitem__(self, key):
         if isinstance(key, str):
             return self._getitem_string(key)
-        elif isinstance(key, tuple) and all(isinstance(name, str) for name in key):
+        if isinstance(key, tuple) and all(isinstance(name, str) for name in key):
             out = copy.copy(self)
             out._visible_keys = list(key)
             return out
-        else:
-            raise KeyError(key)
+        raise KeyError(key)
 
     def __len__(self):
         return len(self._visible_keys)
@@ -458,10 +456,8 @@ class StructureType(DapType, Mapping):
 
     def __delitem__(self, key):
         del self._dict[key]
-        try:
+        with suppress(ValueError):
             self._visible_keys.remove(key)
-        except ValueError:
-            pass
 
     def _get_data(self):
         return [var.data for var in self.children()]
@@ -493,7 +489,6 @@ class StructureType(DapType, Mapping):
 
 
 class DatasetType(StructureType):
-
     """A root Dataset.
 
     The Dataset is a Structure, but it names does not compose the id hierarchy:
@@ -531,7 +526,6 @@ class DatasetType(StructureType):
 
 
 class SequenceType(StructureType):
-
     """A container that stores data in a Numpy array.
 
     Here's a standard dataset for testing sequential data:
@@ -552,7 +546,7 @@ class SequenceType(StructureType):
         >>> seq['site'] = BaseType('site')
         >>> seq.data = data
 
-    Iteraring over the sequence returns data:
+    Iterating over the sequence returns data:
 
         >>> for line in seq.iterdata():
         ...     print(line)
@@ -638,56 +632,13 @@ class SequenceType(StructureType):
         for line in self.data:
             yield tuple(map(decode_np_strings, line))
 
-    def __iter__(self):
-        # This method should be removed in pydap 3.4
-        warnings.warn(
-            "Starting with pydap 3.4 "
-            "``for val in sequence: ...`` "
-            "will give children names. "
-            "To iterate over data the construct "
-            "``for val in sequence.iterdata(): ...``"
-            "is available now and will be supported in the"
-            "future to iterate over data.",
-            PendingDeprecationWarning,
-        )
-        return self.iterdata()
-
-    def __len__(self):
-        # This method should be removed in pydap 3.4
-        warnings.warn(
-            "Starting with pydap 3.4, "
-            "``len(sequence)`` will give "
-            "the number of children and not the "
-            "length of the data.",
-            PendingDeprecationWarning,
-        )
-        return len(self.data)
-
-    def items(self):
-        # This method should be removed in pydap 3.4
-        for key in self._visible_keys:
-            yield (key, self[key])
-
-    def values(self):
-        # This method should be removed in pydap 3.4
-        for key in self._visible_keys:
-            yield self[key]
-
-    def keys(self):
-        # This method should be removed in pydap 3.4
-        return iter(self._visible_keys)
-
-    def __contains__(self, key):
-        # This method should be removed in pydap 3.4
-        return key in self._visible_keys
-
     def __getitem__(self, key):
         # If key is a string, return child with the corresponding data.
         if isinstance(key, str):
             return self._getitem_string(key)
 
         # If it's a tuple, return a new `SequenceType` with selected children.
-        elif isinstance(key, tuple):
+        if isinstance(key, tuple):
             out = self._getitem_string_tuple(key)
             # copy.copy() is necessary here because a view will be returned in
             # the future:
@@ -695,10 +646,9 @@ class SequenceType(StructureType):
             return out
 
         # Else return a new `SequenceType` with the data sliced.
-        else:
-            out = copy.copy(self)
-            out.data = self.data[key]
-            return out
+        out = copy.copy(self)
+        out.data = self.data[key]
+        return out
 
     def __shallowcopy__(self):
         out = type(self)(self.name, self.data, self.attributes.copy())
@@ -730,24 +680,24 @@ class GridType(StructureType):
             return self._getitem_string(key)
 
         # Return a new `GridType` with part of the data.
-        elif isinstance(key, tuple) and all(isinstance(name, str) for name in key):
+        if isinstance(key, tuple) and all(isinstance(name, str) for name in key):
             out = self._getitem_string_tuple(key)
             for var in out.children():
                 var.data = self[var.name].data
             return out
-        else:
-            if not self.output_grid:
-                return self.array[key]
 
-            if not isinstance(key, tuple):
-                key = (key,)
+        if not self.output_grid:
+            return self.array[key]
 
-            out = copy.copy(self)
-            for var, slice_ in zip(out.children(), [key] + list(key)):
-                if type(self.data).__name__ == "BaseProxyDap4":
-                    pass
-                var.data = self[var.name].data[slice_]
-            return out
+        if not isinstance(key, tuple):
+            key = (key,)
+
+        out = copy.copy(self)
+        for var, slice_ in zip(out.children(), [key] + list(key)):
+            if type(self.data).__name__ == "BaseProxyDap4":
+                pass
+            var.data = self[var.name].data[slice_]
+        return out
 
     @property
     def dtype(self):

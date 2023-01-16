@@ -91,7 +91,6 @@ def get_attributes(element):
 
 
 def get_dim_names(element):
-    n_unnamed = 0
     # Not to be confused with dimensions
     dimension_elements = element.findall("Dim")
     dimensions = []
@@ -122,8 +121,7 @@ def has_map(element):
     maps = element.findall("Map")
     if len(maps) > 0:
         return True
-    else:
-        return False
+    return False
 
 
 def dmr_to_dataset(dmr):
@@ -153,7 +151,8 @@ def dmr_to_dataset(dmr):
     # Add size entry for dimension variables
     for name, size in named_dimensions.items():
         if name not in variables:
-            # We might have dimensions that only have a declaration, so we need to add them to the variables
+            # We might have dimensions that only have a declaration, so we need
+            # to add them to the variables
             variables[name] = {
                 "name": name,
                 "size": size,

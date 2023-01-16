@@ -249,17 +249,16 @@ def hyperslab(slice_):
     )
 
 
-def walk(var, type=object):
+def walk(var, ltype=object):
     """Yield all variables of a given type from a dataset.
 
     The iterator returns also the parent variable.
 
     """
-    if isinstance(var, type):
+    if isinstance(var, ltype):
         yield var
     for child in var.children():
-        for var in walk(child, type):
-            yield var
+        yield from walk(child, ltype)
 
 
 def fix_shorthand(projection, dataset):
@@ -297,8 +296,7 @@ def decode_np_strings(numpy_var):
     """Given a fixed-width numpy string, decode it to a unicode type"""
     if isinstance(numpy_var, bytes) and hasattr(numpy_var, "tobytes"):
         return numpy_var.tobytes().decode("utf-8")
-    else:
-        return numpy_var
+    return numpy_var
 
 
 def load_from_entry_point_relative(r, package):

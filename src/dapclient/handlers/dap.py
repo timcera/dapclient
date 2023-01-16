@@ -6,6 +6,7 @@ dataset to the internal model.
 
 """
 
+import codecs
 import copy
 import gzip
 import io
@@ -13,6 +14,7 @@ import io
 # handlers should be set by the application
 # http://docs.python.org/2/howto/logging.html#configuring-logging-for-a-library
 import logging
+import pickle
 import pprint
 import re
 import sys
@@ -98,19 +100,18 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         if protocol == "dap4":
             self.scheme = "http"
             return protocol
-        elif protocol == "dap2":
+        if protocol == "dap2":
             return protocol
-        elif self.scheme == "dap4":
+        if self.scheme == "dap4":
             self.scheme = "http"
             return "dap4"
-        else:
-            extension = self.path.split(".")[-1]
-            if extension in ["dmr", "dap"]:
-                return "dap4"
-            elif extension in ["dds", "dods"]:
-                return "dap2"
-            else:
-                return "dap2"
+
+        extension = self.path.split(".")[-1]
+        if extension in ["dmr", "dap"]:
+            return "dap4"
+        if extension in ["dds", "dods"]:
+            return "dap2"
+        return "dap2"
 
     def make_dataset(
         self,
@@ -242,9 +243,8 @@ def safe_charset_text(r, user_charset):
             .read()
             .decode(get_charset(r, user_charset))
         )
-    else:
-        r.charset = get_charset(r, user_charset)
-        return r.text
+    r.charset = get_charset(r, user_charset)
+    return r.text
 
 
 def safe_dds_and_data(r, user_charset):
@@ -266,8 +266,6 @@ def safe_dmr_and_data(r, user_charset):
         dmr, data = raw.split(b"</Dataset>", 1)
     except ValueError:
         logger.exception(f"Failed to split the following DMR+ \n {raw}")
-        import codecs
-        import pickle
 
         picked_response = str(codecs.encode(pickle.dumps(r), "base64").decode())
         logger.exception(
@@ -660,6 +658,7 @@ def unpack_children(stream, template):
 def convert_stream_to_list(stream, parser_dtype, shape, id):
     out = []
     response_dtype = DAP2_response_dtypemap(parser_dtype)
+    print(f"{shape=}")
     if shape:
         n = numpy.frombuffer(stream.read(4), DAP2_ARRAY_LENGTH_NUMPY_TYPE)[0]
         count = response_dtype.itemsize * n
@@ -682,20 +681,18 @@ def convert_stream_to_list(stream, parser_dtype, shape, id):
                     .astype(parser_dtype)
                     .reshape(shape)
                 )
-            except ValueError as e:
-                if str(e) == "total size of new array must be unchanged":
+            except ValueError as exc:
+                if str(exc) == "total size of new array must be unchanged":
                     # server-side failure.
                     # it is expected that the user should be mindful of this:
                     raise RuntimeError(
-                        (
-                            "variable {} could not be properly "
-                            "retrieved. To avoid this "
-                            "error consider using open_url(..., "
-                            "output_grid=False)."
-                        ).format(urllib.parse.quote(id))
-                    )
-                else:
-                    raise
+                        """
+                            Variable {urllib.parse.quote(id)} could not be
+                            properly retrieved. To avoid this error consider
+                            using open_url(..., output_grid=False).
+                            """
+                    ) from exc
+                raise
             if response_dtype.char == "B":
                 # Unsigned Byte type is packed to multiples of 4 bytes:
                 stream.read(-n % 4)

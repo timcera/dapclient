@@ -128,9 +128,8 @@ class BaseHandler:
             # should the exception be catched?
             if environ.get("x-wsgiorg.throw_errors"):
                 raise
-            else:
-                res = ErrorResponse(info=sys.exc_info())
-                return res(environ, start_response)
+            res = ErrorResponse(info=sys.exc_info())
+            return res(environ, start_response)
 
     def parse(self, projection, selection, buffer_size=BUFFER_SIZE):
         """Parse the constraint expression, returning a new dataset."""
@@ -195,7 +194,7 @@ def apply_selection(selection, dataset):
         conditions = [
             condition
             for condition in selection
-            if re.match(r"%s\.[^\.]+(<=|<|>=|>|=|!=)" % re.escape(seq.id), condition)
+            if re.match(rf"{re.escape(seq.id)}\.[^\.]+(<=|<|>=|>|=|!=)", condition)
         ]
         for condition in conditions:
             id1, op, id2 = parse_selection(condition, dataset)
@@ -319,8 +318,7 @@ class IterData:
                         for col, val in zip(template.keys(), peek)
                     ]
                 )
-            else:
-                return np.array(x).dtype
+            return np.array(x).dtype
 
         return array_dtype(next(iter(self)), self.template)
 
@@ -362,8 +360,8 @@ class IterData:
         if isinstance(key, str):
             try:
                 col = list(self.template._all_keys()).index(key)
-            except ValueError:
-                raise KeyError(key)
+            except ValueError as exc:
+                raise KeyError(key) from exc
             out.level += 1
             out.template = out.template[key]
             out.imap.append(deep_map(operator.itemgetter(col), out.level))
@@ -457,8 +455,7 @@ def deep_map(function, level):
     def out(row, level=level):
         if level == 1:
             return function(row)
-        else:
-            return [out(value, level - 1) for value in row]
+        return [out(value, level - 1) for value in row]
 
     return out
 
@@ -477,11 +474,13 @@ def build_filter(expression, template):
             col = keys.index(token)
             target = target[token]
         a = operator.itemgetter(col)
-    except Exception:
+    except Exception as exc:
         raise ConstraintExpressionError(
-            'Invalid constraint expression: "{expression}" '
-            '("{id}" is not a valid variable)'.format(expression=expression, id=id1)
-        )
+            f"""
+            Invalid constraint expression: "{expression}"
+            ("{id1}" is not a valid variable)
+            """
+        ) from exc
 
     # if we're comparing two variables they must be on the same sequence, so
     # ``parent1`` must be equal to ``parent2``
@@ -496,10 +495,13 @@ def build_filter(expression, template):
             def b(row):
                 return value
 
-        except Exception:
+        except Exception as exc:
             raise ConstraintExpressionError(
-                f'Invalid constraint expression: "{expression}" ("{id2}" is not valid)'
-            )
+                f"""
+                Invalid constraint expression: "{expression}"
+                ("{id2}" is not valid)
+                """
+            ) from exc
 
     op = {
         "<": operator.lt,

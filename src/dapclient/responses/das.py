@@ -96,7 +96,7 @@ def build_attributes(attr, values, level=0):
         yield f"{level * INDENT}}}\n"
     else:
         # get type
-        type = get_type(values)
+        ltype = get_type(values)
 
         # encode values
         if (
@@ -108,7 +108,7 @@ def build_attributes(attr, values, level=0):
         else:
             values = map(encode, values)
 
-        yield f"{level * INDENT}{type} {quote(attr)} {', '.join(values)};\n"
+        yield f"{level * INDENT}{ltype} {quote(attr)} {', '.join(values)};\n"
 
 
 def get_type(values):
@@ -120,15 +120,14 @@ def get_type(values):
     """
     if hasattr(values, "dtype"):
         return NUMPY_TO_DAP2_TYPEMAP[values.dtype.char]
-    elif isinstance(values, str) or not isinstance(values, Iterable):
+    if isinstance(values, str) or not isinstance(values, Iterable):
         return type_convert(values)
-    else:
-        # if there are several values, they may have different types, so we
-        # need to convert all of them and use a precedence table
-        types = [type_convert(val) for val in values]
-        precedence = ["String", "Float64", "Int32"]
-        types.sort(key=precedence.index)
-        return types[0]
+    # if there are several values, they may have different types, so we
+    # need to convert all of them and use a precedence table
+    types = [type_convert(val) for val in values]
+    precedence = ["String", "Float64", "Int32"]
+    types.sort(key=precedence.index)
+    return types[0]
 
 
 def type_convert(obj):
@@ -139,7 +138,6 @@ def type_convert(obj):
     """
     if isinstance(obj, float):
         return "Float64"
-    elif isinstance(obj, int):
+    if isinstance(obj, int):
         return "Int32"
-    else:
-        return "String"
+    return "String"

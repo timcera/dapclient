@@ -56,12 +56,12 @@ class DDSParser(SimpleParser):
         """Parse and return a declaration."""
         token = self.peek(r"\w+").lower()
 
-        map = {
+        lmap = {
             "grid": self.grid,
             "sequence": self.sequence,
             "structure": self.structure,
         }
-        method = map.get(token, self.base)
+        method = lmap.get(token, self.base)
         return method()
 
     def base(self):

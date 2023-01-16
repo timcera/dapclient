@@ -1,9 +1,19 @@
 Handlers
 --------
 
-Now that we saw the dapclient data model we can understand handlers: handlers are simply classes that convert data into the dapclient data model. The NetCDF handler, for example, reads a NetCDF file and builds a ``DatasetType`` object. The SQL handler reads a file describing the variables and maps them to a given table on a relational database. dapclient uses `entry points <http://peak.telecommunity.com/DevCenter/setuptools#dynamic-discovery-of-services-and-plugins>`_ in order to find handlers that are installed in the system. This means that handlers can be developed and installed separately from dapclient. Handlers are mapped to files by a regular expression that usually matches the extension of the file.
+Now that we saw the dapclient data model we can understand handlers: handlers
+are simply classes that convert data into the dapclient data model. The NetCDF
+handler, for example, reads a NetCDF file and builds a ``DatasetType`` object.
+The SQL handler reads a file describing the variables and maps them to a given
+table on a relational database. dapclient uses `entry points
+<http://peak.telecommunity.com/DevCenter/setuptools#dynamic-discovery-of-services-and-plugins>`_
+in order to find handlers that are installed in the system. This means that
+handlers can be developed and installed separately from dapclient. Handlers are
+mapped to files by a regular expression that usually matches the extension of
+the file.
 
-Here is the minimal configuration for a handler that serves ``.npz`` files from Numpy:
+Here is the minimal configuration for a handler that serves ``.npz`` files from
+Numpy:
 
 .. code-block:: python
 
@@ -43,25 +53,51 @@ Here is the minimal configuration for a handler that serves ``.npz`` files from 
         application = Handler(sys.argv[1])
         serve(application, port=8001)
 
-So let's go over the code. Our handler has a single class called ``Handler`` that should be configured as an entry point in the ``setup.py`` file for the handler:
+So let's go over the code. Our handler has a single class called ``Handler``
+that should be configured as an entry point in the ``setup.py`` file for the
+handler:
 
 .. code-block:: ini
 
     [dapclient.handler]
     npz = path.to.my.handler:Handler
 
-Here the name of our handler ("npz") can be anything, as long as it points to the correct class. In order for dapclient to be able to find the handler, it must be installed in the system with either a ``python setup.py install`` or, even better, ``python setup.py develop``.
+Here the name of our handler ("npz") can be anything, as long as it points to
+the correct class. In order for dapclient to be able to find the handler, it
+must be installed in the system with either a ``python setup.py install`` or,
+even better, ``python setup.py develop``.
 
-The class-level attribute ``extensions`` defines a regular expression that matches the files supported by the handler. In this case, the handler will match all files ending with the ``.npz`` extension.
+The class-level attribute ``extensions`` defines a regular expression that
+matches the files supported by the handler. In this case, the handler will
+match all files ending with the ``.npz`` extension.
 
-When the handler is instantiated the complete filepath to the data file is passed in ``__init__``. With this information, our handler extracts the filename of the data file and opens it using the ``load()`` function from Numpy. The handler will be initialized for every request, and immediately its ``parse_constraints`` method is called.
+When the handler is instantiated the complete filepath to the data file is
+passed in ``__init__``. With this information, our handler extracts the
+filename of the data file and opens it using the ``load()`` function from
+Numpy. The handler will be initialized for every request, and immediately its
+``parse_constraints`` method is called.
 
-The ``parse_constraints`` method is responsible for building a dataset object based on information for the request available on ``environ``. In this simple handler we simply built a ``DatasetType`` object with the entirety of our dataset, i.e., we added *all data from all variables* that were available on the ``.npz`` file. Some requests will ask for only a few variables, and only a subset of their data. The easy way parsing the request is simply passing the complete dataset together with the ``QUERY_STRING`` to the ``contrain()`` function:
+The ``parse_constraints`` method is responsible for building a dataset object
+based on information for the request available on ``environ``. In this simple
+handler we simply built a ``DatasetType`` object with the entirety of our
+dataset, i.e., we added *all data from all variables* that were available on
+the ``.npz`` file. Some requests will ask for only a few variables, and only
+a subset of their data. The easy way parsing the request is simply passing the
+complete dataset together with the ``QUERY_STRING`` to the ``contrain()``
+function:
 
 .. code-block:: python
 
     return constrain(dataset, environ.get("QUERY_STRING", ""))
 
-This will take care of filtering our dataset according to the request, although it may not be very efficient. For this reason, handlers usually implement their own parsing of the Opendap constraint expression. The SQL handler, for example, will translate the query string into an SQL expression that filters the data on the database, and not on Python.
+This will take care of filtering our dataset according to the request, although
+it may not be very efficient. For this reason, handlers usually implement their
+own parsing of the Opendap constraint expression. The SQL handler, for example,
+will translate the query string into an SQL expression that filters the data on
+the database, and not on Python.
 
-Finally, note that the handler is a WSGI application: we can initialize it with a filepath and pass it to a WSGI server. This enables us to quickly test the handler, by checking the different responses at ``http://localhost:8001/.dds``, for example. It also means that it is very easy to dinamically serve datasets by plugging them to a route dispatcher.
+Finally, note that the handler is a WSGI application: we can initialize it with
+a filepath and pass it to a WSGI server. This enables us to quickly test the
+handler, by checking the different responses at ``http://localhost:8001/.dds``,
+for example. It also means that it is very easy to dinamically serve datasets
+by plugging them to a route dispatcher.

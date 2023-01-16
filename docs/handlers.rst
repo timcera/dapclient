@@ -1,7 +1,11 @@
 Handlers
 ========
 
-Handlers are special Python modules that convert between a given data format and the data model used by dapclient (defined in the ``dapclient.model`` module). They are necessary in order to dapclient be able to actually serve a dataset. There are handlers for NetCDF, HDF 4 & 5, Matlab, relational databases, Grib 1 & 2, CSV, Seabird CTD files, and a few more.
+Handlers are special Python modules that convert between a given data format
+and the data model used by dapclient (defined in the ``dapclient.model``
+module). They are necessary in order to dapclient be able to actually serve
+a dataset. There are handlers for NetCDF, HDF 4 & 5, Matlab, relational
+databases, Grib 1 & 2, CSV, Seabird CTD files, and a few more.
 
 Installing data handlers
 ------------------------
@@ -9,15 +13,24 @@ Installing data handlers
 NetCDF
 ~~~~~~
 
-`NetCDF <http://www.unidata.ucar.edu/software/netcdf/>`_ is a format commonly used in oceanography, meteorology and climate science to store data in a machine-independent format. You can install the NetCDF handler using `pip <http://pypi.python.org/pypi/pip>`_:
+`NetCDF <http://www.unidata.ucar.edu/software/netcdf/>`_ is a format commonly
+used in oceanography, meteorology and climate science to store data in
+a machine-independent format. You can install the NetCDF handler using `pip
+<http://pypi.python.org/pypi/pip>`_:
 
 .. code-block:: bash
 
     $ pip install dapclient[handlers.netcdf]
 
-This will take care of the necessary dependencies. You don't even need to have to NetCDF libraries installed, since the handler will use a pure Python NetCDF library from `scipy.io.netcdf <https://docs.scipy.org/doc/scipy-0.16.1/reference/generated/scipy.io.netcdf.netcdf_file.html/>`_.
+This will take care of the necessary dependencies. You don't even need to have
+to NetCDF libraries installed, since the handler will use a pure Python NetCDF
+library from `scipy.io.netcdf
+<https://docs.scipy.org/doc/scipy-0.16.1/reference/generated/scipy.io.netcdf.netcdf_file.html/>`_.
 
-The NetCDF handler uses a buffered reader that access the data in contiguous blocks from disk, avoiding reading everything into memory at once. You can configure the size of the buffer by specifying a key in the ``server.ini`` file:
+The NetCDF handler uses a buffered reader that access the data in contiguous
+blocks from disk, avoiding reading everything into memory at once. You can
+configure the size of the buffer by specifying a key in the ``server.ini``
+file:
 
 .. code-block:: ini
 
@@ -28,12 +41,17 @@ The NetCDF handler uses a buffered reader that access the data in contiguous blo
     x-wsgiorg.throw_errors = 0
     dapclient.handlers.netcdf.buf_size = 10000
 
-In this example, the handler will read 10 thousand values at a time, converting the data and sending to the client before reading more blocks.
+In this example, the handler will read 10 thousand values at a time, converting
+the data and sending to the client before reading more blocks.
 
 NCA
 ~~~
 
-The ``dapclient.handlers.nca`` is a simple handler for NetCDF aggregation (hence the name). The configuration is extremely simple. As an example, to aggregate model output in different files (say, ``output1.nc``, ``output2.nc``, etc.) along a new axis "ensemble" just create an INI file with the extension ``.nca``:
+The ``dapclient.handlers.nca`` is a simple handler for NetCDF aggregation
+(hence the name). The configuration is extremely simple. As an example, to
+aggregate model output in different files (say, ``output1.nc``, ``output2.nc``,
+etc.) along a new axis "ensemble" just create an INI file with the extension
+``.nca``:
 
 .. code-block:: ini
 
@@ -48,11 +66,14 @@ The ``dapclient.handlers.nca`` is a simple handler for NetCDF aggregation (hence
     values = 1, 2, ...
     long_name = Ensemble members
 
-This will assign the values 1, 2, and so on to each ensemble member. The new, aggregated dataset, will be accessed at the location of the INI file::
+This will assign the values 1, 2, and so on to each ensemble member. The new,
+aggregated dataset, will be accessed at the location of the INI file::
 
     http://server.example.com/output.nca
 
-Another example: suppose we have monthly data in files ``data01.nc``, ``data02.nc``, ..., ``data12.nc``, and we want to aggregate along the time axis:
+Another example: suppose we have monthly data in files ``data01.nc``,
+``data02.nc``, ..., ``data12.nc``, and we want to aggregate along the time
+axis:
 
 .. code-block:: ini
 
@@ -60,7 +81,9 @@ Another example: suppose we have monthly data in files ``data01.nc``, ``data02.n
     match = /path/to/data*.nc
     axis = TIME  # existing axis
 
-The handler only works with NetCDF files for now, but in the future it should be changed to work with any other dapclient-supported data format. As all handlers, it can be installed using `pip <http://pypi.python.org/pypi/pip>`_:
+The handler only works with NetCDF files for now, but in the future it should
+be changed to work with any other dapclient-supported data format. As all
+handlers, it can be installed using `pip <http://pypi.python.org/pypi/pip>`_:
 
 .. code-block:: bash
 
@@ -69,18 +92,27 @@ The handler only works with NetCDF files for now, but in the future it should be
 CDMS
 ~~~~
 
-This is a handler that uses the ``cdms2.open`` function from `CDAT <http://www2-pcmdi.llnl.gov/cdat>`_/`CdatLite <http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite>`_ to read files in any of the self-describing formats netCDF, HDF, GrADS/GRIB (GRIB with a GrADS control file), or PCMDI DRS. It can be installed using `pip <http://pypi.python.org/pypi/pip>`_:
+This is a handler that uses the ``cdms2.open`` function from `CDAT
+<http://www2-pcmdi.llnl.gov/cdat>`_/`CdatLite
+<http://proj.badc.rl.ac.uk/ndg/wiki/CdatLite>`_ to read files in any of the
+self-describing formats netCDF, HDF, GrADS/GRIB (GRIB with a GrADS control
+file), or PCMDI DRS. It can be installed using `pip
+<http://pypi.python.org/pypi/pip>`_:
 
 .. code-block:: bash
 
     $ pip install dapclient.handlers.cdms
 
-The handler will automatically install ``CdatLite``, which requires the NetCDF libraries to be installed on the system.
+The handler will automatically install ``CdatLite``, which requires the NetCDF
+libraries to be installed on the system.
 
 SQL
 ~~~
 
-The SQL handler reads data from a relation database, as the name suggests. It works by reading a file with the extension ``.sql``, defining the connection to the database and other metadata using either YAML or INI syntax. Below is an example that reads data from a SQLite database:
+The SQL handler reads data from a relation database, as the name suggests. It
+works by reading a file with the extension ``.sql``, defining the connection to
+the database and other metadata using either YAML or INI syntax. Below is an
+example that reads data from a SQLite database:
 
 .. code-block:: ini
 
@@ -156,7 +188,9 @@ The SQL handler reads data from a relation database, as the name suggests. It wo
         type: Float32
         units: degc
 
-The handler works with SQLite, MySQL, PostgreSQL, Oracle, MSSQL and ODBC databases. To install the handler use pip; you should also install the dependencies according to the database used:
+The handler works with SQLite, MySQL, PostgreSQL, Oracle, MSSQL and ODBC
+databases. To install the handler use pip; you should also install the
+dependencies according to the database used:
 
 .. code-block:: bash
 
@@ -169,7 +203,10 @@ The handler works with SQLite, MySQL, PostgreSQL, Oracle, MSSQL and ODBC databas
 Proxy
 ~~~~~
 
-This is a simple handler intended to serve remote datasets locally. For example, suppose you want to serve `this dataset <http://test.opendap.org:8080/dods/dts/D1.html>`_ on your dapclient server. The URL of the dataset is::
+This is a simple handler intended to serve remote datasets locally. For
+example, suppose you want to serve `this dataset
+<http://test.opendap.org:8080/dods/dts/D1.html>`_ on your dapclient server. The
+URL of the dataset is::
 
     http://test.opendap.org:8080/dods/dts/D1
 
@@ -181,12 +218,19 @@ So we create an INI file called, say, ``D1.url``:
     url = http://test.opendap.org:8080/dods/dts/D1
     pass = dds, das, dods
 
-The file specifies that requests for the DDS, DAS and DODS responses should be passed directly to the server (so that the data is downloaded directly from the remote server). Other requests, like for the HTML form or a WMS image are built by dapclient; in this case dapclient acts as an Opendap client, connecting to the remote server and downloading data to fulfill the request.
+The file specifies that requests for the DDS, DAS and DODS responses should be
+passed directly to the server (so that the data is downloaded directly from the
+remote server). Other requests, like for the HTML form or a WMS image are built
+by dapclient; in this case dapclient acts as an Opendap client, connecting to
+the remote server and downloading data to fulfill the request.
 
 CSV
 ~~~
 
-This is a handler for files with comma separated values. The first column should contain the variable names, and subsequent lines the data. Metadata is not supported. The handler is used mostly as a reference for building handlers for sequential data. You can install it with:
+This is a handler for files with comma separated values. The first column
+should contain the variable names, and subsequent lines the data. Metadata is
+not supported. The handler is used mostly as a reference for building handlers
+for sequential data. You can install it with:
 
 .. code-block:: bash
 
@@ -195,7 +239,8 @@ This is a handler for files with comma separated values. The first column should
 HDF5
 ~~~~
 
-A handler for HDF5 files, based on `h5py <http://code.google.com/p/h5py/>`_. In order to install it:
+A handler for HDF5 files, based on `h5py <http://code.google.com/p/h5py/>`_. In
+order to install it:
 
 .. code-block:: bash
 
@@ -204,12 +249,19 @@ A handler for HDF5 files, based on `h5py <http://code.google.com/p/h5py/>`_. In 
 SQLite
 ~~~~~~
 
-This is a handler very similar to the SQL handler. The major difference is that data and metadata are all contained in a single ``.db`` SQLite file. Metadata is stored as JSON in a table called ``attributes``, while data goes into a table ``data``.
+This is a handler very similar to the SQL handler. The major difference is that
+data and metadata are all contained in a single ``.db`` SQLite file. Metadata
+is stored as JSON in a table called ``attributes``, while data goes into
+a table ``data``.
 
-The handler was created as a way to move sequential data from one server to another. It comes with a script called ``freeze`` which will take an Opendap dataset with sequential data and create a ``.db`` file that can be served using this handler. For example:
+The handler was created as a way to move sequential data from one server to
+another. It comes with a script called ``freeze`` which will take an Opendap
+dataset with sequential data and create a ``.db`` file that can be served using
+this handler. For example:
 
 .. code-block:: bash
 
     $ freeze http://opendap.ccst.inpe.br/Observations/PIRATA/pirata_stations.sql
 
-This will creata file called ``pirata_stations.db`` that can be served using the SQLite handler.
+This will create file called ``pirata_stations.db`` that can be served using
+the SQLite handler.

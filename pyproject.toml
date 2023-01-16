@@ -1,6 +1,7 @@
 [build-system]
 requires = [
-    "setuptools",
+    "setuptools>=45",
+    "setuptools_scm[toml]>=6.2",
     "wheel",
     "oldest-supported-numpy",
 ]
@@ -12,8 +13,6 @@ dynamic = ["readme", "version"]
 description = "A client-only fork of pydap using the DAP protocol to access scientific data on the internet."
 dependencies = [
     "numpy",
-    "setuptools",
-    "setuptools_scm",
     "requests",
     "webob",
     ]
@@ -97,6 +96,9 @@ tag_format = "$version"
 version_files = ["VERSION"]
 update_changelog_on_bump = true
 
+[tool.isort]
+profile = "black"
+
 [tool.setuptools]
 license-files = ["LICENSE.txt"]
 include-package-data = true
@@ -109,5 +111,4 @@ version = {file = "VERSION"}
 where = ["src"]
 exclude = ["examples*", "tools*", "docs*", "dapclient.tests*"]
 
-[tool.isort]
-profile = "black"
+[tool.setuptools_scm]

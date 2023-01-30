@@ -33,7 +33,7 @@ def setup_session(
         # Connections must be closed since some CAS
         # will cough when connections are kept alive:
         headers = [
-            ("User-agent", "pydap/{}".format(lib.__version__)),
+            ("User-agent", "dapclient/{}".format(lib.__version__)),
             ("Connection", "close"),
         ]
         session = requests.Session()
@@ -168,7 +168,7 @@ def soup_login(
             # If there is no password_field, it might be because
             # something should be handled in the browser
             # for the first attempt. This is common when using
-            # pydap with the ESGF for the first time.
+            # dapclient with the ESGF for the first time.
             raise Exception(
                 "Navigate to {}. "
                 "If you are unable to "

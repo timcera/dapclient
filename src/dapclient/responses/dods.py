@@ -223,7 +223,7 @@ def calculate_size(dataset):
     length = 0
 
     for var in walk(dataset):
-        # pydap can't calculate the size of sequences since the data is
+        # dapclient can't calculate the size of sequences since the data is
         # streamed directly from the source. Also, strings are encoded
         # individually, so it's not possible to get their size unless we read
         # everything.
@@ -231,7 +231,8 @@ def calculate_size(dataset):
             isinstance(var, BaseType) and DAP2_response_dtypemap(var.dtype).char == "S"
         ):
             return None
-        elif isinstance(var, BaseType):
+
+        if isinstance(var, BaseType):
             if var.shape:
                 length += 8  # account for array size marker
 

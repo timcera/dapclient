@@ -18,7 +18,7 @@ from dapclient.model import (
 warnings.simplefilter("always")
 
 
-# Test the super class for pydap types.
+# Test the super class for dapclient types.
 def test_DapType_quote():
     """Test that names are properly quoted."""
     var = DapType("foo.bar[0]")
@@ -77,7 +77,7 @@ def test_DapType_children():
     assert var.children() == ()
 
 
-# Test the base pydap type.
+# Test the base dapclient type.
 def test_BaseType_no_data():
     """Test empty data and dimensions attributes."""
     var = BaseType("var")
@@ -169,7 +169,7 @@ def test_BaseType_array():
     np.testing.assert_array_equal(np.array(var), np.arange(16).reshape(2, 2, 2, 2))
 
 
-# Test pydap structures.
+# Test dapclient structures.
 def test_StructureType_init():
     """Test attributes used for dict-like behavior."""
     var = StructureType("var")
@@ -343,7 +343,7 @@ def test_StructureType_copy():
     assert original.name == clone.name
 
 
-# Test a pydap structure.
+# Test a dapclient structure.
 def test_DatasetType_setitem():
     """Test item assignment."""
     dataset = DatasetType("dataset")
@@ -390,8 +390,6 @@ def test_SequenceType_len(sequence_example, recwarn):
     """Test that length is read from the data attribute."""
     assert len(list(sequence_example.keys())) == 3
     assert len(sequence_example) == 4
-    assert len(recwarn) == 1
-    assert recwarn.pop(PendingDeprecationWarning)
 
 
 def test_SequenceType_iterdata(sequence_example):
@@ -399,21 +397,6 @@ def test_SequenceType_iterdata(sequence_example):
     for a, b in zip(sequence_example.iterdata(), sequence_example.data):
         for sub_a, sub_b in zip(a, b):
             assert sub_a == sub_b
-
-
-def test_SequenceType_iter(sequence_example):
-    """Test that iteration happens over data."""
-    # Remove in pydap 3.4
-    for a, b in zip(iter(sequence_example), sequence_example.data):
-        for sub_a, sub_b in zip(a, b):
-            assert sub_a == sub_b
-
-
-def test_SequenceType_iter_deprecation(sequence_example, recwarn):
-    """Test that direct iteration over data attribute is deprecated."""
-    # Remove in pydap 3.4
-    iter(sequence_example)
-    assert recwarn.pop(PendingDeprecationWarning)
 
 
 def test_SequenceType_items(sequence_example):
@@ -475,7 +458,7 @@ def test_SequenceType_copy(sequence_example):
     assert (sequence_example.data == clone.data).all()
 
 
-# Test pydap grids.
+# Test dapclient grids.
 @pytest.fixture()
 def gridtype_example():
     """Create a simple grid."""

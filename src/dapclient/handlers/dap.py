@@ -660,7 +660,6 @@ def unpack_children(stream, template):
 def convert_stream_to_list(stream, parser_dtype, shape, id):
     out = []
     response_dtype = DAP2_response_dtypemap(parser_dtype)
-    print(f"{shape=}")
     if shape:
         n = numpy.frombuffer(stream.read(4), DAP2_ARRAY_LENGTH_NUMPY_TYPE)[0]
         count = response_dtype.itemsize * n

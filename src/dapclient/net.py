@@ -59,7 +59,7 @@ def raise_for_status(response):
                 + text
                 + "\n"
                 + "This is redirect error. These should not usually raise "
-                + "an error in pydap beacuse redirects are handled "
+                + "an error in dapclient beacuse redirects are handled "
                 + "implicitly. If it failed it is likely due to a "
                 + "circular redirect."
             ),
@@ -113,7 +113,7 @@ def get_response(req, application, verify=True):
 
 def create_request(url, session=None, timeout=DEFAULT_TIMEOUT, verify=True):
     if session is not None:
-        # If session is set and cookies were loaded using pydap.cas.get_cookies
+        # If session is set and cookies were loaded using dapclient.cas.get_cookies
         # using the check_url option, then we can legitimately expect that
         # the connection will go through seamlessly. However, there might be
         # redirects that might want to modify the cookies. Webob is not

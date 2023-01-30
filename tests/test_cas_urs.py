@@ -39,11 +39,11 @@ def test_basic_urs_auth():
     assert res.status_code == 200
     res.close()
 
-    # Check that the pydap library can access the link:
+    # Check that the dapclient library can access the link:
     res = dapclient.net.follow_redirect(test_url, session=session)
     assert res.status_code == 200
 
-    # Check that the pydap library can access another link:
+    # Check that the dapclient library can access another link:
     res = dapclient.net.follow_redirect(test_url_2, session=session)
     assert res.status_code == 200
     session.close()

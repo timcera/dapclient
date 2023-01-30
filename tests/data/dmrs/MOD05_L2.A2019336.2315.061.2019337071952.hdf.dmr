@@ -246,27 +246,27 @@
         </Attribute>
         <Attribute name="description" type="String">
             <Value>
-
- bit field   Description                     Key
- ---------   -----------                     ---
-
- 0           Cloud Mask Flag                 0 = not determined
-                                             1 = determined
-
- 1-2         Unobstructed FOV Quality Flag   00 = cloud
-                                             01 = 66% prob.
-                                                    clear
-                                             10 = 95% prob.
-                                                    clear
-                                             11 = 99% prob.
-                                                    clear
-             PROCESSING PATH FLAGS
-             ---------------------
- 3           Day / Night Flag                0 = Night / 1 = Day
- 4           Sunglint Flag                   0 = Yes / 1 = No
- 5           Snow / Ice Background Flag      0 = Yes / 1 = No
- 6-7         Land / Water Flag               00=Water/01=Coastal
-                                             10=Desert/11=Land
+                                                                 
+ bit field   Description                     Key                 
+ ---------   -----------                     ---                 
+                                                                 
+ 0           Cloud Mask Flag                 0 = not determined  
+                                             1 = determined      
+                                                                 
+ 1-2         Unobstructed FOV Quality Flag   00 = cloud          
+                                             01 = 66% prob.      
+                                                    clear        
+                                             10 = 95% prob.      
+                                                    clear        
+                                             11 = 99% prob.      
+                                                    clear        
+             PROCESSING PATH FLAGS                               
+             ---------------------                               
+ 3           Day / Night Flag                0 = Night / 1 = Day 
+ 4           Sunglint Flag                   0 = Yes / 1 = No    
+ 5           Snow / Ice Background Flag      0 = Yes / 1 = No    
+ 6-7         Land / Water Flag               00=Water/01=Coastal 
+                                             10=Desert/11=Land   
 </Value>
         </Attribute>
         <Attribute name="valid_range" type="Int32">
@@ -492,49 +492,49 @@
             <Value>Internal geolocation arrays</Value>
         </Attribute>
         <Attribute name="description" type="String">
-            <Value>\n
-
-  Water Vapor IR product and Optional run time QA flags
-
-                   Product run time QA flags
- QA Flag Name     Number of     Bit Value   Description
-                    Bits
- -------------------------------------------------------------
- IR Water Vapor       1             0       not useful
-   QA                               1       useful
-
- IR Water Vapor       2            0-3      4 confidence
-   Confidence QA                              levels
-
- Spares               5
- ---------------------- 1 byte total -------------------------
-
-   Optional run time QA flags - processing path flags
- QA Flag Name     Number of     Bit Value   Description
-                    Bits
- -------------------------------------------------------------
- Number of            8            0-25
-   Cloudy Pixels
-   within 5x5 km
-   box
-
- Number of            8            0-25
-   Clear Pixels
-   within 5x5 km
-   box
-
- Number of            8            0-25
-   Missing
-   Pixels within
-   5x5 km box
-
- IR Water Vapor       2             0      Split Window (11- 12) technique
-   Retrieval                        1      Integration of moisture  profile
-   Method Used                      2      Other
-                                    3      No Retrieval
-
- Spares               6
- ---------------------- 4 bytes total -----------------------
+            <Value>\n                                                                                  
+                                                                                    
+  Water Vapor IR product and Optional run time QA flags                             
+                                                                                    
+                   Product run time QA flags                                        
+ QA Flag Name     Number of     Bit Value   Description                             
+                    Bits                                                            
+ -------------------------------------------------------------                      
+ IR Water Vapor       1             0       not useful                              
+   QA                               1       useful                                  
+                                                                                    
+ IR Water Vapor       2            0-3      4 confidence                            
+   Confidence QA                              levels                                
+                                                                                    
+ Spares               5                                                             
+ ---------------------- 1 byte total -------------------------                      
+                                                                                    
+   Optional run time QA flags - processing path flags                               
+ QA Flag Name     Number of     Bit Value   Description                             
+                    Bits                                                            
+ -------------------------------------------------------------                      
+ Number of            8            0-25                                             
+   Cloudy Pixels                                                                    
+   within 5x5 km                                                                    
+   box                                                                              
+                                                                                    
+ Number of            8            0-25                                             
+   Clear Pixels                                                                     
+   within 5x5 km                                                                    
+   box                                                                              
+                                                                                    
+ Number of            8            0-25                                             
+   Missing                                                                          
+   Pixels within                                                                    
+   5x5 km box                                                                       
+                                                                                    
+ IR Water Vapor       2             0      Split Window (11- 12) technique          
+   Retrieval                        1      Integration of moisture  profile         
+   Method Used                      2      Other                                    
+                                    3      No Retrieval                             
+                                                                                    
+ Spares               6                                                             
+ ---------------------- 4 bytes total -----------------------                       
 </Value>
         </Attribute>
         <Attribute name="scale_factor" type="Float64">
@@ -660,19 +660,19 @@
         </Attribute>
         <Attribute name="title" type="String">
             <Value>
- MODIS HDF File Specification MOD05_L2: MODIS Level 2 NIR and IR Total Precipitable Water
+ MODIS HDF File Specification MOD05_L2: MODIS Level 2 NIR and IR Total Precipitable Water 
 </Value>
         </Attribute>
         <Attribute name="Slope_and_Offset_Usage" type="String">
             <Value>
-The local SDS scale_factor and add_offset attributes are used for the
-conversion of stored integer data to geophysical floating point numbers.
-The implementation follows conventional HDF usage (See HDF Users Guide):
-
-      float value = scale_factor*(stored integer - add_offset)
-
-The unit of the derived floating point value is indicated in the 'units'
-local attribute which is also provided.
+The local SDS scale_factor and add_offset attributes are used for the      
+conversion of stored integer data to geophysical floating point numbers.   
+The implementation follows conventional HDF usage (See HDF Users Guide):   
+                                                                           
+      float value = scale_factor*(stored integer - add_offset)             
+                                                                           
+The unit of the derived floating point value is indicated in the 'units'   
+local attribute which is also provided.                                    
 </Value>
         </Attribute>
         <Attribute name="identifier_product_doi" type="String">

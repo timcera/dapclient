@@ -1,8 +1,10 @@
 import numpy as np
+import pytest
 
 from dapclient.client import open_dods_url, open_url
 
 
+@pytest.mark.client
 def test_metadata():
     dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     sst = dataset["SST"]  # or dataset.SST
@@ -34,6 +36,7 @@ def test_metadata():
     assert sst.units == "Deg C"
 
 
+@pytest.mark.client
 def test_grid_data():
     dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     sst = dataset["SST"]  # or dataset.SST
@@ -52,6 +55,7 @@ def test_grid_data():
     assert str(grid.COADSX[:]) == "<BaseType with data array([41., 43., 45., 47.])>"
 
 
+@pytest.mark.client
 def test_grid_subset():
     dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     sst = dataset["SST"]  # or dataset.SST
@@ -60,6 +64,7 @@ def test_grid_subset():
     assert np.array_equal(grid.COADSX[:].data, [41.0, 43.0, 45.0, 47.0])
 
 
+@pytest.mark.client
 def test_sst_grid():
     dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     sst = dataset["SST"]  # or dataset.SST
@@ -246,6 +251,7 @@ def test_sst_grid():
     #
 
 
+@pytest.mark.client
 def test_grid_coords():
     dataset = open_url("http://test.opendap.org/dap/data/nc/coads_climatology.nc")
     new_dataset = dataset.functions.geogrid(dataset.SST, 10, 20, -10, 60)
@@ -299,6 +305,7 @@ def test_grid_coords():
     )
 
 
+@pytest.mark.client
 def test_shapes():
     dataset = open_url(
         "http://test.opendap.org/dap/data/nc/coads_climatology.nc?SST[0:3:11][0:1:89][0:1:179]"
@@ -313,6 +320,7 @@ def test_shapes():
 #    assert dataset.keys() == ["A"]
 
 
+@pytest.mark.client
 def test_dods():
     dataset = open_dods_url(
         "http://test.opendap.org/dap/data/nc/coads_climatology.nc.dods?SST[0:3:11][0:1:89][0:1:179]"

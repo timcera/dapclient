@@ -99,6 +99,14 @@ update_changelog_on_bump = true
 [tool.isort]
 profile = "black"
 
+[tool.pytest.ini_options]
+markers = [
+    "client",
+    "prod_url",
+    "good_url",
+    "auth",
+    ]
+
 [tool.setuptools]
 license-files = ["LICENSE.txt"]
 include-package-data = true

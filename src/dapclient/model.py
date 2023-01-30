@@ -1,5 +1,5 @@
-"""This is the pydap data model, an implementation of the Data Access Protocol
-data model written in Python.
+"""This is the dapclient data model, an implementation of the Data Access
+Protocol data model written in Python.
 
 The model is composed of a base object which represents data, the `BaseType`,
 and by objects which can hold other objects, all derived from `StructureType`.
@@ -55,7 +55,7 @@ arbitrary attributes::
     >>> foo.dimensions = ('time',)
 
 Second, `BaseType` can hold data objects other than Numpy arrays. There are
-more complex data objects, like `pydap.handlers.dap.BaseProxy`, which acts as a
+more complex data objects, like `dapclient.handlers.dap.BaseProxy`, which acts as a
 transparent proxy to a remote dataset, exposing it through the same interface.
 
 Now that we have some data, we can organize it using containers::
@@ -123,7 +123,7 @@ children::
     ...     ('salinity', np.float32), ('id', np.dtype('|S1'))]))
 
 Note that the data in this case is attributed to the `SequenceType`, and is
-composed of a series of values for each of the children.  pydap `SequenceType`
+composed of a series of values for each of the children.  dapclient `SequenceType`
 obects are very flexible. Data can be accessed by iterating over the object::
 
     >>> for record in cast.iterdata():
@@ -145,14 +145,14 @@ It is possible to select only a few variables::
 
 When sliced, it yields the underlying array:
     >>> type(cast['temperature'][-1:])
-    <class 'pydap.model.BaseType'>
+    <class 'dapclient.model.BaseType'>
     >>> for record in cast['temperature'][-1:].iterdata():
     ...     print(record)
     15.0
 
 When constrained, it yields the SequenceType:
     >>> type(cast[ cast['temperature'] < 16 ])
-    <class 'pydap.model.SequenceType'>
+    <class 'dapclient.model.SequenceType'>
     >>> for record in cast[ cast['temperature'] < 16 ].iterdata():
     ...     print(record)
     (20.0, 15.0, 35.0, '2')
@@ -634,24 +634,10 @@ class SequenceType(StructureType):
         for line in self.data:
             yield tuple(map(decode_np_strings, line))
 
-    def __iter__(self):
-        # This method should be removed in pydap 3.4
-        warnings.warn(
-            "Starting with pydap 3.4 "
-            "``for val in sequence: ...`` "
-            "will give children names. "
-            "To iterate over data the construct "
-            "``for val in sequence.iterdata(): ...``"
-            "is available now and will be supported in the"
-            "future to iterate over data.",
-            PendingDeprecationWarning,
-        )
-        return self.iterdata()
-
     def __len__(self):
-        # This method should be removed in pydap 3.4
+        # This method should be removed in dapclient 1.0
         warnings.warn(
-            "Starting with pydap 3.4, "
+            "Starting with dapclient 1.0, "
             "``len(sequence)`` will give "
             "the number of children and not the "
             "length of the data.",
@@ -660,21 +646,21 @@ class SequenceType(StructureType):
         return len(self.data)
 
     def items(self):
-        # This method should be removed in pydap 3.4
+        # This method should be removed in dapclient 1.0
         for key in self._visible_keys:
             yield (key, self[key])
 
     def values(self):
-        # This method should be removed in pydap 3.4
+        # This method should be removed in dapclient 1.0
         for key in self._visible_keys:
             yield self[key]
 
     def keys(self):
-        # This method should be removed in pydap 3.4
+        # This method should be removed in dapclient 1.0
         return iter(self._visible_keys)
 
     def __contains__(self, key):
-        # This method should be removed in pydap 3.4
+        # This method should be removed in dapclient 1.0
         return key in self._visible_keys
 
     def __getitem__(self, key):

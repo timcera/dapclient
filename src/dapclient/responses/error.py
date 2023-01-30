@@ -1,6 +1,6 @@
-"""pydap error response.
+"""dapclient error response.
 
-pydap will capture exceptions returned by the system and return them properly
+dapclient will capture exceptions returned by the system and return them properly
 formated as a DAP error response.
 
 """
@@ -44,7 +44,7 @@ class ErrorResponse:
         res.charset = "utf-8"
         res.headers.add("Content-description", "dods_error")
         res.headers.add(
-            "XDODS-Server", f"pydap/{get_distribution('dapclient').version}"
+            "XDODS-Server", f"dapclient/{get_distribution('dapclient').version}"
         )
 
         return res(environ, start_response)

@@ -1,8 +1,8 @@
 """Basic functions for handlers.
 
-pydap handlers are responsible for reading data in different formats -- NetCDF,
-SQL databases, CSV files, etc. -- and convert them into the internal data model
-so that the data may be served using different responses.
+dapclient handlers are responsible for reading data in different formats --
+NetCDF, SQL databases, CSV files, etc. -- and convert them into the internal
+data model so that the data may be served using different responses.
 """
 
 import ast
@@ -78,7 +78,7 @@ def get_handler(filepath, handlers=None, instantiate=True):
 
 
 class BaseHandler:
-    """Base class for pydap handlers.
+    """Base class for dapclient handlers.
 
     Handlers are WSGI applications that parse the client request and build the
     corresponding dataset. The dataset is passed to proper Response (DDS, DAS,
@@ -99,7 +99,7 @@ class BaseHandler:
         if response == "das":
             req.query_string = ""
         projection, selection = parse_ce(req.query_string)
-        buffer_size = environ.get("pydap.buffer_size", BUFFER_SIZE)
+        buffer_size = environ.get("dapclient.buffer_size", BUFFER_SIZE)
 
         try:
             # build the dataset and pass it to the proper response, returning a

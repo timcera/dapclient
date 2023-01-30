@@ -50,10 +50,6 @@ NUMPY_TO_DAP2_TYPEMAP = {
 
 # DAP2 demands big-endian 32 bytes signed integers
 # www.opendap.org/pdf/dap_2_data_model.pdf
-# Before pydap 3.2.2, length was
-# big-endian 32 bytes UNSIGNED integers:
-# DAP2_ARRAY_LENGTH_NUMPY_TYPE = '>I'
-# Since pydap 3.2.2, the length type is accurate:
 DAP2_ARRAY_LENGTH_NUMPY_TYPE = ">i"
 
 DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
@@ -73,7 +69,7 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
     # The consequence is that there is no natural way
     # in DAP2 to represent numpy's 'b' type.
     # Ideally, DAP2 would have a signed Byte type
-    # and a usigned UByte type and we would have the
+    # and a unsigned UByte type and we would have the
     # following mapping: {'Byte': 'b', 'UByte': 'B'}
     # but this not how the protocol has been defined.
     # This means that DAP2 Byte is unsigned and must be
@@ -85,7 +81,7 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
     "URL": "S",
     #
     # These two types are not DAP2 but it is useful
-    # to include them for compatiblity with other
+    # to include them for compatibility with other
     # data sources:
     "Int": ">i",
     "UInt": ">I",
@@ -95,22 +91,23 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
 # numpy dtype string with specified endiannes.
 # Here, the endianness is very important:
 LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
-    "float64": ">d",
     "float32": ">f",
-    "int8": ">B",
+    "float64": ">d",
+    "byte": "B",
+    # "int8": ">b",  # DAP2 does not support signed bytes
+    "uint8": ">B",
     "int16": ">h",
     "uint16": ">H",
+    "int": ">i",
     "int32": ">i",
+    "uint": ">I",
     "uint32": ">I",
-    "byte": "B",
     "string": STRING,
     "url": STRING,
-    "int": ">i",
-    "uint": ">I",
 }
 
 # Typemap from lower case DAP4 types to
-# numpy dtype string with specified endiannes.
+# numpy dtype string with specified endianiness.
 # Here, the endianness is very important:
 DAP4_TO_NUMPY_PARSER_TYPEMAP = {
     "Float16": ">f2",

@@ -1,6 +1,6 @@
 import ssl
 from contextlib import closing
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import requests
 from requests.exceptions import InvalidSchema, MissingSchema, Timeout
@@ -22,6 +22,10 @@ def GET(url, application=None, session=None, timeout=DEFAULT_TIMEOUT, verify=Tru
     if application:
         _, _, path, query, fragment = urlsplit(url)
         url = urlunsplit(("", "", path, query, fragment))
+
+    scheme, host, path, query, fragment = urlsplit(url)
+    query = quote(query)
+    url = urlunsplit((scheme, host, path, query, fragment))
 
     response = follow_redirect(
         url, application=application, session=session, timeout=timeout, verify=verify

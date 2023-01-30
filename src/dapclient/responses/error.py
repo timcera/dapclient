@@ -31,12 +31,10 @@ class ErrorResponse:
 
         # build error message
         code = getattr(info[0], "code", -1)
-        self.body = str(
-            """Error {{
-    code = {0};
-    message = {1};
+        self.body = f"""Error {{
+    code = {code};
+    message = {message};
 }}"""
-        ).format(code, message)
 
     def __call__(self, environ, start_response):
         res = Response()

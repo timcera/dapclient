@@ -1,12 +1,12 @@
-"""Fundamental functions for pydap responses.
+"""Fundamental functions for dapclient responses.
 
-pydap responses are WSGI applications that convert a dataset into different
+dapclient responses are WSGI applications that convert a dataset into different
 representations, like the DDS, DAS and DODS responses described in the DAP
 specification.
 
-In addition to the official responses, pydap also has responses that generate
+In addition to the official responses, dapclient also has responses that generate
 KML, WMS, JSON, etc., installed as third-party Python packages that declare the
-"pydap.response" entry point.
+"dapclient.response" entry point.
 
 """
 
@@ -19,8 +19,8 @@ from dapclient.model import DatasetType
 def load_responses():
     """Load all available responses from the system, returning a dictionary."""
     # Relative import of responses:
-    package = "pydap"
-    entry_points = "pydap.response"
+    package = "dapclient"
+    entry_points = "dapclient.response"
     base_dict = dict(
         load_from_entry_point_relative(r, package)
         for r in iter_entry_points(entry_points)
@@ -37,16 +37,16 @@ def load_responses():
 
 class BaseResponse:
 
-    """A base class for pydap responses.
+    """A base class for dapclient responses.
 
-    A pydap response is a WSGI application that converts a dataset into any
+    A dapclient response is a WSGI application that converts a dataset into any
     other representation. The most know responses are the DDS, DAS and DODS
     responses from the DAP spec, which describe the dataset structure,
     attributes and data, respectively.
 
     According to the WSGI specification, WSGI applications must returned an
     iterable object when called. While this is traditionally a list of strings
-    representing an HTML response, this is not the case for pydap. pydap will
+    representing an HTML response, this is not the case for dapclient. dapclient will
     return an object (the response instance itself), which is an iterable that
     yields the corresponding output (a DDS response, eg).
 
@@ -62,7 +62,7 @@ class BaseResponse:
     def __init__(self, dataset):
         self.dataset = dataset
         self.headers = [
-            ("XDODS-Server", f"pydap/{get_distribution('dapclient').version}")
+            ("XDODS-Server", f"dapclient/{get_distribution('dapclient').version}")
         ]
 
     def __call__(self, environ, start_response):
@@ -73,7 +73,7 @@ class BaseResponse:
         r"""Avoid serialization of datasets.
 
         This function will return the contained dataset if ``ltype`` is a
-        ``pydap.model.DatasetType`` object. Based on this proposal:
+        ``dapclient.model.DatasetType`` object. Based on this proposal:
 
             http://wsgi.readthedocs.org/en/latest/specifications/ \
                     avoiding_serialization.html

@@ -32,8 +32,8 @@ response:
     >>> dataset = open_file(
     ...     "/path/to/file.dods", "/path/to/file.das")  #doctest: +SKIP
 
-Remote datasets opened with `open_url` can call server functions. dapclient has a
-lazy mechanism for function call, supporting any function. Eg, to call the
+Remote datasets opened with `open_url` can call server functions. dapclient has
+a lazy mechanism for function call, supporting any function. Eg, to call the
 `geogrid` function on the server:
 
     >>> dataset = open_url(
@@ -96,11 +96,11 @@ def open_file(file_path, das_path=None):
     extension = file_path.split(".")[-1]
     if extension == "dods":
         return open_dods_file(file_path=file_path, das_path=das_path)
-    elif extension == "dap":
+    if extension == "dap":
         return open_dap_file(file_path=file_path)
-    elif extension == "dds":
+    if extension == "dds":
         return None
-    elif extension == "dmr":
+    if extension == "dmr":
         return open_dmr_file(file_path=file_path)
 
 
@@ -122,7 +122,8 @@ def open_dmr_file(file_path):
     dmr_len = get_dmr_length(file_path)
     with open(file_path, "rb") as f:
         if f.peek()[0:2] == b"\x04\x00":
-            # First 2 bytes are CRLF, second two bytes give the length of the DMR; we skip over them
+            # First 2 bytes are CRLF, second two bytes give the length of the
+            # DMR; we skip over them
             f.seek(4)
             # We read the DMR minus the CRLF and newline (3 bytes)
         dmr = f.read(dmr_len)

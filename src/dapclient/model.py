@@ -518,8 +518,10 @@ class DatasetType(StructureType):
             from dapclient.apis.netcdf4 import NetCDF
 
             return NetCDF(self, *args, **kwargs)
-        except ImportError:
-            raise NotImplementedError(".to_netcdf requires the netCDF4 " "package.")
+        except ImportError as exc:
+            raise NotImplementedError(
+                ".to_netcdf requires the netCDF4 " "package."
+            ) from exc
 
     def change_order(self, order):
         self._dict = OrderedDict((k, self._dict[k]) for k in order)
@@ -632,6 +634,49 @@ class SequenceType(StructureType):
         for line in self.data:
             yield tuple(map(decode_np_strings, line))
 
+    def __iter__(self):
+        # This method should be removed in pydap 3.4
+        warnings.warn(
+            "Starting with pydap 3.4 "
+            "``for val in sequence: ...`` "
+            "will give children names. "
+            "To iterate over data the construct "
+            "``for val in sequence.iterdata(): ...``"
+            "is available now and will be supported in the"
+            "future to iterate over data.",
+            PendingDeprecationWarning,
+        )
+        return self.iterdata()
+
+    def __len__(self):
+        # This method should be removed in pydap 3.4
+        warnings.warn(
+            "Starting with pydap 3.4, "
+            "``len(sequence)`` will give "
+            "the number of children and not the "
+            "length of the data.",
+            PendingDeprecationWarning,
+        )
+        return len(self.data)
+
+    def items(self):
+        # This method should be removed in pydap 3.4
+        for key in self._visible_keys:
+            yield (key, self[key])
+
+    def values(self):
+        # This method should be removed in pydap 3.4
+        for key in self._visible_keys:
+            yield self[key]
+
+    def keys(self):
+        # This method should be removed in pydap 3.4
+        return iter(self._visible_keys)
+
+    def __contains__(self, key):
+        # This method should be removed in pydap 3.4
+        return key in self._visible_keys
+
     def __getitem__(self, key):
         # If key is a string, return child with the corresponding data.
         if isinstance(key, str):
@@ -735,7 +780,7 @@ class GridType(StructureType):
     @property
     def maps(self):
         """Return the axes in an ordered dict."""
-        return OrderedDict([(k, self[k]) for k in self.keys()][1:])
+        return OrderedDict(list(self.items())[1:])
 
     @property
     def dimensions(self):

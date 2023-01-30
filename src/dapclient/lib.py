@@ -79,7 +79,7 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
     # This means that DAP2 Byte is unsigned and must be
     # mapped to numpy's 'B' type, usigned byte.
     "Byte": "B",
-    # Map String to numpy's string type 'S' b/c
+    # Map String to numpy's string type 'S' because
     # DAP2 does not explicitly support unicode.
     "String": "S",
     "URL": "S",
@@ -97,6 +97,7 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
 LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
     "float64": ">d",
     "float32": ">f",
+    "int8": ">B",
     "int16": ">h",
     "uint16": ">H",
     "int32": ">i",
@@ -143,12 +144,18 @@ def quote(name):
 
 def encode(obj):
     """Return an object encoded to its DAP representation."""
-    if isinstance(obj, str) or isinstance(obj, np.ndarray) and obj.dtype.char in "SU":
+    try:
+        if np.all(np.isnan(obj)):
+            return "NaN"
+    except TypeError:
+        pass
+
+    if isinstance(obj, np.ndarray) and obj.dtype.char in "SU":
         return f'"{obj}"'
 
     try:
         return f"{obj:.6g}"
-    except Exception:
+    except (ValueError, TypeError):
         return f'"{obj}"'
 
 
@@ -169,34 +176,34 @@ def fix_slice(slice_, shape):
     # expand Ellipsis and make `slice_` at least as long as `shape`
     expand = len(shape) - len(slice_)
     out = []
-    for s in slice_:
-        if s is Ellipsis:
+    for sli in slice_:
+        if sli is Ellipsis:
             out.extend((slice(None),) * (expand + 1))
             expand = 0
         else:
-            out.append(s)
+            out.append(sli)
     slice_ = tuple(out) + (slice(None),) * expand
 
     out = []
-    for s, n in zip(slice_, shape):
-        if isinstance(s, int):
-            if s < 0:
-                s += n
-            out.append(s)
+    for slic, shp in zip(slice_, shape):
+        if isinstance(slic, int):
+            if slic < 0:
+                slic += shp
+            out.append(slic)
         else:
-            k = s.step or 1
+            k = slic.step or 1
 
-            i = s.start
+            i = slic.start
             if i is None:
                 i = 0
             elif i < 0:
-                i += n
+                i += shp
 
-            j = s.stop
-            if j is None or j > n:
-                j = n
+            j = slic.stop
+            if j is None or j > shp:
+                j = shp
             elif j < 0:
-                j += n
+                j += shp
 
             out.append(slice(i, j, k))
 
@@ -299,22 +306,22 @@ def decode_np_strings(numpy_var):
     return numpy_var
 
 
-def load_from_entry_point_relative(r, package):
+def load_from_entry_point_relative(rel, package):
     try:
         loaded = getattr(
             __import__(
-                r.module_name.replace(package + ".", "", 1),
+                rel.module_name.replace(package + ".", "", 1),
                 globals(),
                 None,
-                [r.attrs[0]],
+                [rel.attrs[0]],
                 1,
             ),
-            r.attrs[0],
+            rel.attrs[0],
         )
-        return r.name, loaded
+        return rel.name, loaded
     except ImportError:
         # This is only used in handlers testing:
-        return r.name, r.load()
+        return rel.name, rel.load()
 
 
 class StreamReader:
@@ -324,14 +331,14 @@ class StreamReader:
         self.stream = stream
         self.buf = bytearray()
 
-    def read(self, n):
-        """Read and return `n` bytes."""
-        while len(self.buf) < n:
+    def read(self, num):
+        """Read and return `num` bytes."""
+        while len(self.buf) < num:
             bytes_read = next(self.stream)
             self.buf.extend(bytes_read)
 
-        out = bytes(self.buf[:n])
-        self.buf = self.buf[n:]
+        out = bytes(self.buf[:num])
+        self.buf = self.buf[num:]
         return out
 
 
@@ -341,11 +348,11 @@ class BytesReader:
     def __init__(self, data):
         self.data = data
 
-    def read(self, n):
-        """Read and return `n` bytes."""
-        out = self.data[:n]
-        self.data = self.data[n:]
+    def read(self, num):
+        """Read and return `num` bytes."""
+        out = self.data[:num]
+        self.data = self.data[num:]
         return out
 
-    def peek(self, n):
-        return self.data[:n]
+    def peek(self, num):
+        return self.data[:num]

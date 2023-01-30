@@ -23,7 +23,6 @@ from io import BytesIO
 from itertools import chain
 
 import numpy
-from numpy.lib.arrayterator import Arrayterator
 
 import dapclient.handlers.lib
 import dapclient.model
@@ -107,9 +106,9 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
             return "dap4"
 
         extension = self.path.split(".")[-1]
-        if extension in ["dmr", "dap"]:
+        if extension in ("dmr", "dap"):
             return "dap4"
-        if extension in ["dds", "dods"]:
+        if extension in ("dds", "dods"):
             return "dap2"
         return "dap2"
 
@@ -184,6 +183,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
                 var.shape,
                 application=self.application,
                 session=self.session,
+                timeout=self.timeout,
             )
         for var in walk(self.dataset, dapclient.model.GridType):
             var.set_output_grid(self.output_grid)
@@ -198,6 +198,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
                 var.shape,
                 application=self.application,
                 session=self.session,
+                timeout=self.timeout,
             )
         for var in walk(self.dataset, dapclient.model.SequenceType):
             template = copy.copy(var)
@@ -206,6 +207,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
                 template,
                 application=self.application,
                 session=self.session,
+                timeout=self.timeout,
             )
 
         # apply projections

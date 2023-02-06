@@ -42,6 +42,7 @@ jobs:
                   python -m pip install flake8 pytest pytest-cov pytest-mpl
                   python -m pip install coverage[toml]
                   python -m pip install coveralls
+                  python -m pip install requests-mock
                   python -m pip install -e .
 
             - name: Test with pytest

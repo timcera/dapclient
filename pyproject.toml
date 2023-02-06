@@ -15,6 +15,7 @@ dependencies = [
     "numpy",
     "requests",
     "webob",
+    "bs4",
     ]
 license = {text = "BSD-3-Clause"}
 authors = [
@@ -67,6 +68,7 @@ dev = [
     "pytest-cov",
     "pytest-mpl",
     "pyupgrade",
+    "requests-mock",
     "twine",
     "unimport",
     "velin",

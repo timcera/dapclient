@@ -1,9 +1,9 @@
 """Test the basic DAP functions."""
 
 import unittest
+from sys import maxsize as MAXSIZE
 
 import numpy as np
-from six import MAXSIZE
 
 from dapclient.exceptions import ConstraintExpressionError
 from dapclient.lib import (

@@ -1,3 +1,9 @@
+## 1.0.0 (2023-02-06)
+
+### Refactor
+
+- finish pydap to dapclient transition in documentation and finished add client only tests from pydap
+
 ## 0.1.2 (2023-01-16)
 
 ### Refactor

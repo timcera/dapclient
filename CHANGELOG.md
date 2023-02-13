@@ -1,3 +1,9 @@
+## v1.0.2 (2023-02-13)
+
+### Fix
+
+- removed server only command line script install to something that wasn't there anyway
+
 ## v1.0.1 (2023-02-13)
 
 ### Refactor

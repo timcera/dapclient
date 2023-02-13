@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-import pytest
 
 from dapclient.handlers.lib import BaseHandler
 from dapclient.parsers import parse_ce

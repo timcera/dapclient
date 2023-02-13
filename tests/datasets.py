@@ -83,14 +83,8 @@ D1.Drifters.data = np.array(
     np.rec.fromrecords(
         list(
             zip(
-                [
-                    "This is a data test string (pass {}).".format(1 + i * 2)
-                    for i in range(5)
-                ],
-                [
-                    "This is a data test string (pass {}).".format(i * 2)
-                    for i in range(5)
-                ],
+                [f"This is a data test string (pass {1 + i * 2})." for i in range(5)],
+                [f"This is a data test string (pass {i * 2})." for i in range(5)],
                 [1000.0, 999.95, 999.80, 999.55, 999.20],
                 [999.95, 999.55, 998.75, 997.55, 995.95],
             )

@@ -1,7 +1,6 @@
 import os
 
 import numpy
-import pytest
 
 import dapclient.client
 

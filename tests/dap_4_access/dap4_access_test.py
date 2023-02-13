@@ -65,13 +65,13 @@ def main():
         start = time.time()
         dapclient_ds = dapclient.client.open_url(dap4_url, session=session)
 
-        print(f"The attributes:")
+        print("The attributes:")
         print(dapclient_ds["sea_ice_fraction"].attributes)
         i += 1
         print(f"Call {i}")
         variable = dapclient_ds["sea_ice_fraction"][0, 1700:1799:10, 1800:1900:10]
         print(f"Time for request: {time.time()-start}")
-        print(f'A subset of the "sea_ice_fraction" variable')
+        print('A subset of the "sea_ice_fraction" variable')
         print(variable.data)
 
 

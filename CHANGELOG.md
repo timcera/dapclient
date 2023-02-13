@@ -1,3 +1,9 @@
+## v1.0.1 (2023-02-13)
+
+### Refactor
+
+- changed unnecessary f-strings to regular strings
+
 ## 1.0.0 (2023-02-06)
 
 ### Refactor

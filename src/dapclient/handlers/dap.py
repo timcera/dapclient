@@ -65,7 +65,6 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         user_charset="ascii",
         protocol=None,
     ):
-
         self.application = application
         self.session = session
         self.output_grid = output_grid

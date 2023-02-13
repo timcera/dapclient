@@ -33,7 +33,7 @@ def setup_session(
         # Connections must be closed since some CAS
         # will cough when connections are kept alive:
         headers = [
-            ("User-agent", "dapclient/{}".format(lib.__version__)),
+            ("User-agent", f"dapclient/{lib.__version__}"),
             ("Connection", "close"),
         ]
         session = requests.Session()
@@ -120,9 +120,9 @@ def raise_if_form_exists(url, session):
     """
 
     user_warning = (
-        "Navigate to {}, ".format(url) + "login and follow instructions. "
+        f"Navigate to {url}, " + "login and follow instructions. "
         "It is likely that you have to perform some one-time "
-        "registration steps before acessing this data."
+        "registration steps before accessing this data."
     )
 
     resp = session.get(url)

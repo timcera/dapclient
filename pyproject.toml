@@ -76,9 +76,6 @@ dev = [
     "vulture"
 ]
 
-[project.scripts]
-dapclient = "dapclient.dapclient:main"
-
 [project.urls]
 documentation = "https://timcera.bitbucket.io/dapclient/docs/index.html#dapclient-documentation"
 github = "https://github.com/timcera/dapclient"

@@ -27,16 +27,37 @@ from dapclient.responses.lib import BaseResponse
 
 
 def DAP2_response_dtypemap(dtype):
-    """
-    This function takes a numpy dtype object
-    and returns a dtype object that is compatible with
-    the DAP2 specification.
+    """Converts a numpy dtype object to a DAP2 compatible dtype.
+
+    Parameters
+    ----------
+    dtype : numpy.dtype
+        The dtype to convert.
+
+    Returns
+    -------
+    DAP2_response_dtypemap : numpy.dtype
+        dtype object that is compatible with the DAP2 specification.
     """
     dtype_str = DAP2_TO_NUMPY_RESPONSE_TYPEMAP[NUMPY_TO_DAP2_TYPEMAP[dtype.char]]
     return np.dtype(dtype_str)
 
 
 def tostring_with_byteorder(x, dtype):
+    """Convert a numpy array to a string with the given byteorder.
+
+    Parameters
+    ----------
+    x : numpy.ndarray
+        The array to convert.
+    dtype : numpy.dtype
+        The dtype to use for the conversion.
+
+    Returns
+    -------
+    tostring_with_byteorder : str
+        The converted array.
+    """
     return x.astype(dtype.str).newbyteorder(dtype.byteorder).tobytes()
 
 
@@ -219,7 +240,18 @@ def _basetype(var):
 
 
 def calculate_size(dataset):
-    """Calculate the size of the response. Returns the size in bytes."""
+    """Calculate the size of the response.
+
+    Parameters
+    ----------
+    dataset : DatasetType
+        The dataset to calculate the size of.
+
+    Returns
+    -------
+    calculated_size : int
+        Returns the size in bytes.
+    """
     length = 0
 
     for var in walk(dataset):

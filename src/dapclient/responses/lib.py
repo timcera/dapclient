@@ -75,9 +75,7 @@ class BaseResponse:
         This function will return the contained dataset if ``ltype`` is a
         ``dapclient.model.DatasetType`` object. Based on this proposal:
 
-            http://wsgi.readthedocs.org/en/latest/specifications/ \
-                    avoiding_serialization.html
-
+        http://wsgi.readthedocs.org/en/latest/specifications/avoiding_serialization.html
         """
         if ltype is DatasetType:
             return self.dataset

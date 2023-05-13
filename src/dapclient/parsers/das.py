@@ -25,7 +25,6 @@ class DASParser(SimpleParser):
         """Return a token from the buffer.
 
         Not that it will Ignore white space when consuming tokens.
-
         """
         token = super().consume(regexp)
         self.buffer = self.buffer.lstrip()
@@ -105,8 +104,17 @@ def parse_das(das):
 def add_attributes(dataset, attributes):
     """Add attributes from a parsed DAS to a dataset.
 
-    Returns the dataset with added attributes.
+    Parameters
+    ----------
+    dataset : dapclient.model.Dataset
+        The dataset to add attributes to.
+    attributes : dict
+        The attributes to add.
 
+    Returns
+    -------
+    add_attributes : dapclient.model.Dataset
+        Returns the dataset with added attributes.
     """
     dataset.attributes["NC_GLOBAL"] = attributes.get("NC_GLOBAL", {})
     dataset.attributes["DODS_EXTRA"] = attributes.get("DODS_EXTRA", {})

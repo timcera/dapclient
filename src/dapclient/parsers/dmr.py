@@ -31,16 +31,35 @@ namespace = {"": "http://xml.opendap.org/ns/DAP/4.0#"}
 
 
 def dap4_to_numpy_typemap(type_string):
+    """Takes a numpy dtype object and returns a dtype object.
+
+    The returned dtype is compatible with the DAP2 specification.
+
+    Parameters
+    ----------
+    type_string : str
+        A string representing a numpy dtype.
+
+    Returns
+    -------
+    dtype : numpy.dtype
+        A numpy dtype object compatible with the DAP2 specification.
     """
-    This function takes a numpy dtype object
-    and returns a dtype object that is compatible with
-    the DAP2 specification.
-    """
+
     dtype_str = dapclient.lib.DAP4_TO_NUMPY_PARSER_TYPEMAP[type_string]
     return np.dtype(dtype_str)
 
 
 def get_variables(node, prefix=""):
+    """Return a dictionary of variables from a DMR representation.
+
+    Parameters
+    ----------
+    node : xml.etree.ElementTree.Element
+        The root node of the DMR representation.
+    prefix : str
+        The prefix to use for the variable names.
+    """
     variables = collections.OrderedDict()
     group_name = node.get("name")
     if group_name is None:
@@ -58,6 +77,15 @@ def get_variables(node, prefix=""):
 
 
 def get_named_dimensions(node, prefix=""):
+    """Return a dictionary of named dimensions from a DMR representation.
+
+    Parameters
+    ----------
+    node : xml.etree.ElementTree.Element
+        The root node of the DMR representation.
+    prefix : str
+        The prefix to use for the dimension names.
+    """
     dimensions = {}
     group_name = node.get("name")
     if group_name is None:
@@ -75,12 +103,26 @@ def get_named_dimensions(node, prefix=""):
 
 
 def get_dtype(element):
+    """Return a numpy dtype object for a variable.
+
+    Parameters
+    ----------
+    element : xml.etree.ElementTree.Element
+        The element to get the dtype for.
+    """
     dtype = element.tag
     dtype = dap4_to_numpy_typemap(dtype)
     return dtype
 
 
 def get_attributes(element):
+    """Return a dictionary of attributes for a variable.
+
+    Parameters
+    ----------
+    element : xml.etree.ElementTree.Element
+        The element to get the attributes for.
+    """
     attributes = {}
     attribute_elements = element.findall("Attribute")
     for attribute_element in attribute_elements:
@@ -91,6 +133,13 @@ def get_attributes(element):
 
 
 def get_dim_names(element):
+    """Return a list of dimension names for a variable.
+
+    Parameters
+    ----------
+    element : xml.etree.ElementTree.Element
+        The element to get the dimension names for.
+    """
     # Not to be confused with dimensions
     dimension_elements = element.findall("Dim")
     dimensions = []
@@ -107,6 +156,13 @@ def get_dim_names(element):
 
 
 def get_dim_sizes(element):
+    """Return a tuple of dimension sizes for a variable.
+
+    Parameters
+    ----------
+    element : xml.etree.ElementTree.Element
+        The element to get the dimension sizes for.
+    """
     dimension_elements = element.findall("Dim")
     dimension_sizes = ()
     for dimension_element in dimension_elements:
@@ -118,6 +174,13 @@ def get_dim_sizes(element):
 
 
 def has_map(element):
+    """Return True if the variable has a map, False otherwise.
+
+    Parameters
+    ----------
+    element : xml.etree.ElementTree.Element
+        The element to check for a map.
+    """
     maps = element.findall("Map")
     if len(maps) > 0:
         return True
@@ -125,8 +188,13 @@ def has_map(element):
 
 
 def dmr_to_dataset(dmr):
-    """Return a dataset object from a DMR representation."""
+    """Return a dataset object from a DMR representation.
 
+    Parameters
+    ----------
+    dmr : str
+        A string representing a DMR representation.
+    """
     # Parse the DMR. First dropping the namespace
     dmr = re.sub(' xmlns="[^"]+"', "", dmr, count=1)
     dom_et = ET.fromstring(dmr)

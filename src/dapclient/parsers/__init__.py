@@ -20,7 +20,15 @@ def parse_projection(inputstr):
     The function takes into account server-side functions, and parse slices
     into Python slice objects.
 
-    Returns a list of names and slices.
+    Parameters
+    ----------
+    inputstr : str
+        A string representing a projection.
+
+    Returns
+    -------
+    projection : list
+        list of names and slices.
     """
 
     def tokenize(inputstr):
@@ -53,7 +61,6 @@ def parse_selection(expression, dataset):
     variables or values and a comparison operator. Variables are returned as
     dapclient objects from a given dataset, while values are parsed using
     ``ast.literal_eval``.
-
     """
     id1, op, id2 = re.split("(<=|>=|!=|=~|>|<|=)", expression, 1)
 
@@ -105,8 +112,15 @@ def parse_ce(query_string):
         >>> parse_ce('mean(mean(g.a,1),0)')
         (['mean(mean(g.a,1),0)'], [])
 
-    Returns a tuple with the projection and the selection.
+    Parameters
+    ----------
+    query_string : str
+        The QUERY_STRING from the URL.
 
+    Returns
+    -------
+    projection : tuple
+        Returns a tuple with the projection and the selection.
     """
     tokens = [token for token in unquote(query_string).split("&") if token]
     if not tokens:
@@ -123,7 +137,18 @@ def parse_ce(query_string):
 
 
 def parse_hyperslab(hyperslab):
-    """Parse a hyperslab, returning a Python tuple of slices."""
+    """Parse a hyperslab.
+
+    Parameters
+    ----------
+    hyperslab : str
+        A string representing a hyperslab.
+
+    Returns
+    -------
+    hyperslab : tuple
+        Python tuple of slices.
+    """
     exprs = [expr for expr in hyperslab[1:-1].split("][") if expr]
 
     out = []

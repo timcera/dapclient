@@ -13,10 +13,18 @@ name_regexp = r'[\w%!~"\'\*-]+'
 
 
 def DAP2_parser_typemap(type_string):
-    """
-    This function takes a numpy dtype object
-    and returns a dtype object that is compatible with
-    the DAP2 specification.
+    """Maps a numpy dtype object to a DAP2 compatible dtype object.
+
+    Parameters
+    ----------
+    type_string : str
+        A string representing a numpy dtype object.
+
+    Returns
+    -------
+    DAP2_parser_typemap : str
+        A string representing a numpy dtype object that is
+        compatible with the DAP2 specification.
     """
     dtype_str = LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP[type_string.lower()]
     return np.dtype(dtype_str)

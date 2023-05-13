@@ -68,11 +68,27 @@ def open_url(
     user_charset="ascii",
     protocol=None,
 ):
-    """
-    Open a remote URL, returning a dataset.
+    """Open a remote URL, returning a dataset.
 
-    set output_grid to `False` to retrieve only main arrays and
-    never retrieve coordinate axes.
+    Parameters
+    ----------
+    url : str
+        The URL of the dataset.
+    application : str, optional
+        The application to use when requesting the dataset.
+    session : requests.Session, optional
+        A requests session to use when requesting the dataset.
+    output_grid : bool, optional
+        Set output_grid to `False` to retrieve only main arrays and never
+        retrieve coordinate axes.
+    timeout : int, optional
+        The timeout for the request.
+    verify : bool, optional
+        Verify SSL certificates.
+    user_charset : str, optional
+        The charset to use when decoding strings.
+    protocol : str, optional
+        The protocol to use when requesting the dataset.
     """
     handler = dapclient.handlers.dap.DAPHandler(
         url,
@@ -93,6 +109,15 @@ def open_url(
 
 
 def open_file(file_path, das_path=None):
+    """Open a file depending on the file extension.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+    das_path : str, optional
+        The path to the das file.
+    """
     extension = file_path.split(".")[-1]
     if extension == "dods":
         return open_dods_file(file_path=file_path, das_path=das_path)
@@ -105,6 +130,13 @@ def open_file(file_path, das_path=None):
 
 
 def get_dmr_length(file_path):
+    """Get the length of the DMR in a `.dap` (dap4) response.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+    """
     with open(file_path, "rb") as f:
         # First two bytes are CRLF
         if f.peek()[0:2] == b"\x04\x00":
@@ -119,6 +151,13 @@ def get_dmr_length(file_path):
 
 
 def open_dmr_file(file_path):
+    """Open a .dmr file.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+    """
     dmr_len = get_dmr_length(file_path)
     with open(file_path, "rb") as f:
         if f.peek()[0:2] == b"\x04\x00":
@@ -133,9 +172,13 @@ def open_dmr_file(file_path):
 
 
 def open_dap_file(file_path):
-    """Open a file downloaded from a `.dap` (dap4) response, returning
-    a dataset Optionally, read also the `.das` response to assign attributes to
-    the dataset."""
+    """Open a file downloaded from a `.dap` (dap4) response.
+
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+    """
     dataset = open_dmr_file(file_path)
 
     with open(file_path, "rb") as f:
@@ -149,8 +192,13 @@ def open_dap_file(file_path):
 def open_dods_file(file_path, das_path=None):
     """Open a file downloaded from a `.dods` (dap2) response, returning a dataset.
 
-    Optionally, read also the `.das` response to assign attributes to the
-    dataset.
+    Parameters
+    ----------
+    file_path : str
+        The path to the file.
+    das_path : str, optional
+        The path to the das file.  The `.das` response is used to assign
+        attributes to the dataset.
     """
     dds = ""
     # This file contains both ascii _and_ binary data
@@ -189,8 +237,24 @@ def open_dods_url(
     timeout=dapclient.lib.DEFAULT_TIMEOUT,
     verify=True,
 ):
-    """Open a `.dods` response directly, returning a dataset."""
+    """Open a `.dods` response directly, returning a dataset.
 
+    Parameters
+    ----------
+    url : str
+        The url to the `.dods` response.
+    metadata : bool, optional
+        If True, also fetch the `.das` response and add attributes to the
+        dataset.
+    application : str, optional
+        The application name to send to the server.
+    session : requests.Session, optional
+        A session object to use for the request.
+    timeout : int, optional
+        The timeout to use for the request.
+    verify : bool, optional
+        Whether to verify SSL certificates.
+    """
     r = dapclient.net.GET(url, application, session, timeout=timeout)
     dapclient.net.raise_for_status(r)
 

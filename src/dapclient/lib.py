@@ -91,17 +91,17 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
 # numpy dtype string with specified endiannes.
 # Here, the endianness is very important:
 LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
-    "float32": ">f",
     "float64": ">d",
-    "byte": "B",
-    # "int8": ">b",  # DAP2 does not support signed bytes
-    "uint8": ">B",
+    "float32": ">f",
     "int16": ">h",
     "uint16": ">H",
-    "int": ">i",
     "int32": ">i",
-    "uint": ">I",
     "uint32": ">I",
+    "int": ">i",
+    "uint": ">I",
+    # "int8": ">b",  # DAP2 does not support signed bytes
+    "uint8": ">B",
+    "byte": "B",
     "string": STRING,
     "url": STRING,
 }
@@ -110,17 +110,17 @@ LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
 # numpy dtype string with specified endianiness.
 # Here, the endianness is very important:
 DAP4_TO_NUMPY_PARSER_TYPEMAP = {
-    "Float16": ">f2",
-    "Float32": ">f4",
     "Float64": ">f8",
-    "Int8": ">i1",
-    "UInt8": ">u1",
-    "Int16": ">i2",
-    "UInt16": ">u2",
-    "Int32": ">i4",
-    "UInt32": ">u4",
+    "Float32": ">f4",
+    "Float16": ">f2",
     "Int64": ">i8",
     "UInt64": ">u8",
+    "Int32": ">i4",
+    "UInt32": ">u4",
+    "Int16": ">i2",
+    "UInt16": ">u2",
+    "Int8": ">i1",
+    "UInt8": ">u1",
     "Byte": "B",
     "String": STRING,
     "Url": STRING,
@@ -130,6 +130,13 @@ DAP4_TO_NUMPY_PARSER_TYPEMAP = {
 def quote(name):
     """Return quoted name according to the DAP specification.
 
+    Parameters
+    ----------
+    name : str
+        Name to quote.
+
+    Examples
+    --------
     >>> quote("White space")
     'White%20space'
     >>> quote("Period.")
@@ -140,7 +147,13 @@ def quote(name):
 
 
 def encode(obj):
-    """Return an object encoded to its DAP representation."""
+    """Return an object encoded to its DAP representation.
+
+    Parameters
+    ----------
+    obj : object
+        Object to encode.
+    """
     try:
         if np.all(np.isnan(obj)):
             return "NaN"
@@ -159,12 +172,21 @@ def encode(obj):
 def fix_slice(slice_, shape):
     """Return a normalized slice.
 
-    This function returns a slice so that it has the same length of `shape`,
-    and no negative indexes, if possible.
-
     This is based on this document:
+    http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
 
-        http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
+    Parameters
+    ----------
+    slice_ : slice or tuple of slices
+        Slice to normalize.
+    shape : tuple of ints
+        Shape of the array being sliced.
+
+    Returns
+    -------
+    fix_slice : tuple of slices
+        This function returns a slice so that it has the same length of
+        `shape`, and no negative indexes, if possible.
     """
     # convert `slice_` to a tuple
     if not isinstance(slice_, tuple):
@@ -212,8 +234,14 @@ def combine_slices(slice1, slice2):
 
     These two should be equal:
 
-        x[ combine_slices(s1, s2) ] == x[s1][s2]
+    x[ combine_slices(s1, s2) ] == x[s1][s2]
 
+    Parameters
+    ----------
+    slice1 : tuple of slices
+        First slice.
+    slice2 : tuple of slices
+        Second slice.
     """
     out = []
     for exp1, exp2 in zip_longest(slice1, slice2, fillvalue=slice(None)):
@@ -239,7 +267,13 @@ def combine_slices(slice1, slice2):
 
 
 def hyperslab(slice_):
-    """Return a DAP representation of a multidimensional slice."""
+    """Return a DAP representation of a multidimensional slice.
+
+    Parameters
+    ----------
+    slice_ : tuple of slices
+        Slice to convert to DAP representation.
+    """
     if not isinstance(slice_, tuple):
         slice_ = [slice_]
     else:
@@ -258,6 +292,12 @@ def walk(var, ltype=object):
 
     The iterator returns also the parent variable.
 
+    Parameters
+    ----------
+    var : object
+        Variable to start the walk from.
+    ltype : type
+        Type of the variables to yield.
     """
     if isinstance(var, ltype):
         yield var
@@ -272,6 +312,12 @@ def fix_shorthand(projection, dataset):
     the "shorthand notation", and it has to be fixed. This function will return
     a new projection with no shorthand calls.
 
+    Parameters
+    ----------
+    projection : list of lists of tuples
+        Projection to fix.
+    dataset : DatasetType
+        Dataset to use to fix the shorthand notation.
     """
     out = []
     for var in projection:
@@ -291,19 +337,42 @@ def fix_shorthand(projection, dataset):
 
 
 def get_var(dataset, id_):
-    """Given an id, return the corresponding variable from the dataset."""
+    """Given an id, return the corresponding variable from the dataset.
+
+    Parameters
+    ----------
+    dataset : DatasetType
+        Dataset to use to get the variable.
+    id_ : str
+        Id of the variable to get.
+    """
     tokens = id_.split(".")
     return reduce(operator.getitem, [dataset] + tokens)
 
 
 def decode_np_strings(numpy_var):
-    """Given a fixed-width numpy string, decode it to a unicode type"""
+    """Given a fixed-width numpy string, decode it to a unicode type.
+
+    Parameters
+    ----------
+    numpy_var : numpy.ndarray
+        Numpy array to decode.
+    """
     if isinstance(numpy_var, bytes) and hasattr(numpy_var, "tobytes"):
         return numpy_var.tobytes().decode("utf-8")
     return numpy_var
 
 
 def load_from_entry_point_relative(rel, package):
+    """Load a class from an entry point relative to a package.
+
+    Parameters
+    ----------
+    rel : pkg_resources.EntryPoint
+        Entry point to load.
+    package : str
+        Package to use as a reference.
+    """
     try:
         loaded = getattr(
             __import__(

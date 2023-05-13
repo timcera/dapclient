@@ -6,11 +6,23 @@ from . import get_cookies
 def setup_session(
     openid, password, username=None, check_url=None, session=None, verify=False
 ):
-    """
-    A special call to get_cookies.setup_session that is tailored for
-    ESGF credentials.
+    """Call to get_cookies.setup_session that is setup for ESGF credentials.
 
-    username should only be necessary for a CEDA openid.
+    Parameters
+    ----------
+    openid : str
+        The openid to use for authentication.
+    password : str
+        The password to use for authentication.
+    username : str, optional
+        The username to use for authentication.
+        `username` should only be necessary for a CEDA openid.
+    check_url : str, optional
+        The url to check the authentication on.
+    session : requests.Session, optional
+        The session to use for authentication.
+    verify : bool, optional
+        Whether to verify the connection.
     """
     session = get_cookies.setup_session(
         _uri(openid),
@@ -26,13 +38,25 @@ def setup_session(
 
 
 def _uri(openid):
-    """
-    Create ESGF authentication url.
-    This function might be sensitive to a
-    future evolution of the ESGF security.
+    """Create ESGF authentication url.
+
+    This function might be sensitive to a future evolution of the ESGF
+    security.
+
+    Parameters
+    ----------
+    openid : str
+        The openid to use for authentication.
     """
 
     def generate_url(dest_url):
+        """Generate the url to authenticate to the ESGF.
+
+        Parameters
+        ----------
+        dest_url : str
+            The url to authenticate to.
+        """
         dest_node = _get_node(dest_url)
 
         try:
@@ -51,4 +75,11 @@ def _uri(openid):
 
 
 def _get_node(url):
+    """Get the node of the url.
+
+    Parameters
+    ----------
+    url : str
+        The url to get the node from.
+    """
     return "/".join(url.split("/")[:3]).replace("http:", "https:")

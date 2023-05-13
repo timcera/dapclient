@@ -87,7 +87,25 @@ def _basetypegridtype(var, level=0):
 
 
 def build_attributes(attr, values, level=0):
-    """Recursive function to build the DAS."""
+    """Recursive function to build the DAS.
+
+    This function recursively builds the DAS response. It is used by the
+    :func:`das` function to build the DAS response.
+
+    Parameters
+    ----------
+    attr : str
+        The name of the attribute.
+    values : object
+        The value of the attribute.
+    level : int
+        The indentation level.
+
+    Yields
+    ------
+    build_attributes : str
+        The DAS response.
+    """
     # check for metadata
     if isinstance(values, dict):
         yield f"{level * INDENT}{attr} {{\n"
@@ -115,8 +133,17 @@ def get_type(values):
     """Extract the type of a variable.
 
     This function tries to determine the DAP type of a Python variable using
-    several methods. Returns the DAP type as a string.
+    several methods.
 
+    Parameters
+    ----------
+    values : object
+        The Python object to determine the type of.
+
+    Returns
+    -------
+    get_type : str
+        Returns the DAP type as a string.
     """
     if hasattr(values, "dtype"):
         return NUMPY_TO_DAP2_TYPEMAP[values.dtype.char]
@@ -133,8 +160,15 @@ def get_type(values):
 def type_convert(obj):
     """Map Python objects to the corresponding Opendap types.
 
-    Returns the DAP representation of the type as a string.
+    Parameters
+    ----------
+    obj : object
+        The python object to convert.
 
+    Returns
+    -------
+    type_convert : str
+        Returns the DAP representation of the type as a string.
     """
     if isinstance(obj, float):
         return "Float64"

@@ -95,6 +95,13 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         self.add_proxies()
 
     def determine_protocol(self, protocol):
+        """Determine the protocol to use for this dataset.
+
+        If the protocol is explicitly set, use that. Otherwise, use the
+        protocol specified in the URL. If the URL does not specify a
+        protocol, use dap4 if the extension is .dmr or .dap, otherwise
+        use dap2.
+        """
         if protocol == "dap4":
             self.scheme = "http"
             return protocol
@@ -114,13 +121,20 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
     def make_dataset(
         self,
     ):
+        """Make a dataset from a DAP URL.
+
+        This method is called by the constructor. It is also called by
+        the BaseProxyDAP2 class to make a dataset from a DAP URL that
+        has been modified by a projection.
+        """
         if self.protocol == "dap4":
             self.dataset_from_dap4()
         else:
             self.dataset_from_dap2()
-        self.attach_das()
+            self.attach_das()
 
     def dataset_from_dap4(self):
+        """Make a dataset from a DAP4 URL."""
         dmr_url = urllib.parse.urlunsplit(
             (self.scheme, self.netloc, self.path + ".dmr", self.query, self.fragment)
         )
@@ -136,6 +150,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         self.dataset = dmr_to_dataset(dmr)
 
     def dataset_from_dap2(self):
+        """Make a dataset from a DAP2 URL."""
         dds_url = urllib.parse.urlunsplit(
             (self.scheme, self.netloc, self.path + ".dds", self.query, self.fragment)
         )
@@ -151,7 +166,10 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         self.dataset = dds_to_dataset(dds)
 
     def attach_das(self):
-        # Also pull the DAS and add additional attributes
+        """Attach the DAS to the dataset.
+
+        Also pull the DAS and add additional attributes to the dataset.
+        """
         das_url = urllib.parse.urlunsplit(
             (self.scheme, self.netloc, self.path + ".das", self.query, self.fragment)
         )
@@ -167,13 +185,14 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         add_attributes(self.dataset, parse_das(das))
 
     def add_proxies(self):
+        """Add proxies to the dataset."""
         if self.protocol == "dap4":
             self.add_dap4_proxies()
         else:
             self.add_dap2_proxies()
 
     def add_dap4_proxies(self):
-        # remove any projection from the base_url, leaving selections
+        """Remove any projection from the base_url, leaving selections."""
         for var in walk(self.dataset, dapclient.model.BaseType):
             var.data = BaseProxyDap4(
                 self.base_url,
@@ -188,7 +207,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
             var.set_output_grid(self.output_grid)
 
     def add_dap2_proxies(self):
-        # now add data proxies
+        """Remove any projection from the base_url, leaving selections."""
         for var in walk(self.dataset, dapclient.model.BaseType):
             var.data = BaseProxyDap2(
                 self.base_url,
@@ -231,6 +250,17 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
 
 
 def get_charset(r, user_charset):
+    """Get the charset from the response.
+
+    If the response does not have a charset, use the user's charset.
+
+    Parameters
+    ----------
+    r : requests.Response
+        The response.
+    user_charset : str
+        The user's charset.
+    """
     charset = r.charset
     if not charset:
         charset = user_charset
@@ -238,6 +268,15 @@ def get_charset(r, user_charset):
 
 
 def safe_charset_text(r, user_charset):
+    """Get the text from a response, handling the charset.
+
+    Parameters
+    ----------
+    r : requests.Response
+        The response.
+    user_charset : str
+        The user's charset.
+    """
     if r.content_encoding == "gzip":
         return (
             gzip.GzipFile(fileobj=BytesIO(r.body))
@@ -249,6 +288,15 @@ def safe_charset_text(r, user_charset):
 
 
 def safe_dds_and_data(r, user_charset):
+    """Get the dds and data from a response, handling the charset.
+
+    Parameters
+    ----------
+    r : requests.Response
+        The response.
+    user_charset : str
+        The user's charset.
+    """
     if r.content_encoding == "gzip":
         raw = gzip.GzipFile(fileobj=BytesIO(r.body)).read()
     else:
@@ -258,6 +306,15 @@ def safe_dds_and_data(r, user_charset):
 
 
 def safe_dmr_and_data(r, user_charset):
+    """Get the dmr and data from a response, handling the charset.
+
+    Parameters
+    ----------
+    r : requests.Response
+        The response.
+    user_charset : str
+        The user's charset.
+    """
     if r.content_encoding == "gzip":
         raw = gzip.GzipFile(fileobj=BytesIO(r.body)).read()
     else:
@@ -270,8 +327,9 @@ def safe_dmr_and_data(r, user_charset):
 
         picked_response = str(codecs.encode(pickle.dumps(r), "base64").decode())
         logger.exception(
-            "pickled response (base64): \n ----BEGIN PICKLE----- \n %s -----END PICKLE-----"
-            % picked_response
+            f"""pickled response (base64):
+----BEGIN PICKLE-----
+ {picked_response} -----END PICKLE-----"""
         )
 
     dmr = dmr[4:] + b"</Dataset>"
@@ -601,7 +659,19 @@ class SequenceProxy:
 
 
 def unpack_sequence(stream, template):
-    """Unpack data from a sequence, yielding records."""
+    """Unpack data from a sequence, yielding records.
+
+    This function is a generator that yields records from a sequence. The
+    records are unpacked from a stream of bytes, and the template is used to
+    determine the structure of the records.
+
+    Parameters
+    ----------
+    stream : StreamReader
+        A stream of bytes.
+    template : BaseType, SequenceType
+        The template for the sequence.
+    """
     # is this a sequence or a base type?
     sequence = isinstance(template, dapclient.model.SequenceType)
 
@@ -637,7 +707,18 @@ def unpack_sequence(stream, template):
 
 
 def unpack_children(stream, template):
-    """Unpack children from a structure, returning their data."""
+    """Unpack children from a structure, returning their data.
+
+    This function unpacks data from a stream of bytes, and the template is used
+    to determine the structure of the data.
+
+    Parameters
+    ----------
+    stream : StreamReader
+        A stream of bytes.
+    template : StructureType
+        The template for the structure.
+    """
     cols = list(template.children()) or [template]
 
     out = []
@@ -657,6 +738,19 @@ def unpack_children(stream, template):
 
 
 def convert_stream_to_list(stream, parser_dtype, shape, id):
+    """Convert a stream of bytes to a list of values.
+
+    Parameters
+    ----------
+    stream : StreamReader
+        A stream of bytes.
+    parser_dtype : numpy.dtype
+        The dtype of the data.
+    shape : tuple
+        The shape of the data.
+    id : str
+        The id of the data.
+    """
     out = []
     response_dtype = DAP2_response_dtypemap(parser_dtype)
     if shape:
@@ -719,11 +813,26 @@ def convert_stream_to_list(stream, parser_dtype, shape, id):
 
 
 def unpack_dap2_data(xdr_stream, dataset):
-    """Unpack a string of encoded data, returning data as lists."""
+    """Unpack a string of encoded data, returning data as lists.
+
+    Parameters
+    ----------
+    xdr_stream : XDRStreamReader
+        A stream of bytes.
+    dataset : DatasetType
+        The dataset to unpack.
+    """
     return unpack_children(xdr_stream, dataset)
 
 
 def decode_chunktype(chunk_type):
+    """Decode the chunk type.
+
+    Parameters
+    ----------
+    chunk_type : int
+        The chunk type.
+    """
     encoding = f"{chunk_type:03b}"
     if sys.byteorder == "little":
         # If our machine's byteorder is little, we need to swap since the chunk_type is always big endian
@@ -735,6 +844,13 @@ def decode_chunktype(chunk_type):
 
 
 def get_count(variable):
+    """Get the count of a variable.
+
+    Parameters
+    ----------
+    variable : VariableType
+        The variable to get the count of.
+    """
     count = int(numpy.array(variable.shape).prod())
     item_size = numpy.dtype(variable.dtype).itemsize
     count = count * item_size
@@ -742,6 +858,21 @@ def get_count(variable):
 
 
 def decode_variable(buffer, start, stop, variable, endian):
+    """Decode a variable.
+
+    Parameters
+    ----------
+    buffer : bytearray
+        The buffer to decode.
+    start : int
+        The start of the buffer.
+    stop : int
+        The stop of the buffer.
+    variable : VariableType
+        The variable to decode.
+    endian : str
+        The endian to use.
+    """
     dtype = variable.dtype
     dtype = dtype.newbyteorder(endian)
     data = numpy.frombuffer(buffer[start:stop], dtype=dtype).astype(dtype)
@@ -750,6 +881,13 @@ def decode_variable(buffer, start, stop, variable, endian):
 
 
 def stream2bytearray(xdr_stream):
+    """Convert a stream to a bytearray.
+
+    Parameters
+    ----------
+    xdr_stream : XDRStreamReader
+        A stream of bytes.
+    """
     last = False
     buffer = bytearray()
     while not last:
@@ -762,6 +900,13 @@ def stream2bytearray(xdr_stream):
 
 
 def get_endianness(xdr_stream):
+    """Get the endianness of the stream.
+
+    Parameters
+    ----------
+    xdr_stream : XDRStreamReader
+        A stream of bytes.
+    """
     chunk_header = xdr_stream.peek(4)[0:4]
     chunk_header = numpy.frombuffer(chunk_header, dtype=">u4")[0]
     chunk_type = (chunk_header >> 24) & 0xFF
@@ -770,6 +915,15 @@ def get_endianness(xdr_stream):
 
 
 def unpack_dap4_data(xdr_stream, dataset):
+    """Unpack a string of encoded data, returning data as lists.
+
+    Parameters
+    ----------
+    xdr_stream : XDRStreamReader
+        A stream of bytes.
+    dataset : DatasetType
+        The dataset to unpack.
+    """
     endian = get_endianness(xdr_stream)
     checksum_dtype = numpy.dtype(endian + "u4")
     buffer = stream2bytearray(xdr_stream)
@@ -796,6 +950,15 @@ def unpack_dap4_data(xdr_stream, dataset):
 
 
 def find_pattern_in_string_iter(pattern, i):
+    """Find a pattern in a string iterator.
+
+    Parameters
+    ----------
+    pattern : str
+        The pattern to find.
+    i : iterator
+        The iterator to search.
+    """
     last_chunk = b""
     length = len(pattern)
     for this_chunk in i:
@@ -810,7 +973,6 @@ def dump():  # pragma: no cover
     """Unpack dods response into lists.
 
     Return pretty-printed data.
-
     """
     dods = sys.stdin.read()
     dds, xdrdata = dods.split(b"\nData:\n", 1)

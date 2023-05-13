@@ -13,11 +13,19 @@ from dapclient.lib import DEFAULT_TIMEOUT
 def GET(url, application=None, session=None, timeout=DEFAULT_TIMEOUT, verify=True):
     """Open a remote URL returning a webob.response.Response object
 
-    Optional parameters:
-    session: a requests.Session() object (potentially) containing
-             authentication cookies.
-
-    Optionally open a URL to a local WSGI application
+    Parameters
+    ----------
+    url: str
+        URL to open
+    application: WSGI application
+        Optionally open a URL to a local WSGI application
+    session: requests.Session() object
+        A requests.Session() object (potentially) containing authentication
+        cookies.
+    timeout: int
+        Timeout in seconds
+    verify: bool
+        Verify SSL certificate
     """
     if application:
         _, _, path, query, fragment = urlsplit(url)
@@ -36,7 +44,13 @@ def GET(url, application=None, session=None, timeout=DEFAULT_TIMEOUT, verify=Tru
 
 
 def raise_for_status(response):
-    # Raise error if status is above 300:
+    """Raise an HTTPError if the status is above 300.
+
+    Parameters
+    ----------
+    response: webob.response.Response
+        Response object
+    """
     if response.status_code >= 400:
         raise HTTPError(
             detail=response.status + "\n" + response.text,
@@ -54,14 +68,14 @@ def raise_for_status(response):
             text = ""
         raise HTTPError(
             detail=(
-                response.status
-                + "\n"
-                + text
-                + "\n"
-                + "This is redirect error. These should not usually raise "
-                + "an error in dapclient beacuse redirects are handled "
-                + "implicitly. If it failed it is likely due to a "
-                + "circular redirect."
+                f"""{response.status}
+
+{text}
+
+This is redirect error. These should not usually raise
+an error in dapclient beacuse redirects are handled
+implicitly. If it failed it is likely due to a
+circular redirect."""
             ),
             headers=response.headers,
             comment=response.body,
@@ -71,22 +85,45 @@ def raise_for_status(response):
 def follow_redirect(
     url, application=None, session=None, timeout=DEFAULT_TIMEOUT, verify=True
 ):
-    """
+    """Follow redirects and return a webob.response.Response object.
+
     This function essentially performs the following command:
+
     >>> Request.blank(url).get_response(application)  # doctest: +SKIP
 
     It however makes sure that the request possesses the same cookies and
     headers as the passed session.
-    """
 
+    Parameters
+    ----------
+    url: str
+        URL to open
+    application: WSGI application
+        Optionally open a URL to a local WSGI application
+    session: requests.Session() object
+        A requests.Session() object (potentially) containing authentication
+        cookies.
+    timeout: int
+        Timeout in seconds
+    verify: bool
+        Verify SSL certificate
+    """
     req = create_request(url, session=session, timeout=timeout, verify=verify)
     return get_response(req, application, verify=verify)
 
 
 def get_response(req, application, verify=True):
-    """
-    If verify=False, use the ssl library to temporarily disable
-    ssl verification.
+    """Get response from request.
+
+    Parameters
+    ----------
+    req: webob.request.Request
+        Request object
+    application: WSGI application
+        Optionally open a URL to a local WSGI application
+    verify: bool
+        Verify SSL certificate. If verify=False, use the ssl library to
+        temporarily disable ssl verification.
     """
     if verify:
         resp = req.get_response(application)
@@ -112,6 +149,20 @@ def get_response(req, application, verify=True):
 
 
 def create_request(url, session=None, timeout=DEFAULT_TIMEOUT, verify=True):
+    """Create a webob.request.Request object.
+
+    Parameters
+    ----------
+    url: str
+        URL to open
+    session: requests.Session() object
+        A requests.Session() object (potentially) containing authentication
+        cookies.
+    timeout: int
+        Timeout in seconds
+    verify: bool
+        Verify SSL certificate
+    """
     if session is not None:
         # If session is set and cookies were loaded using dapclient.cas.get_cookies
         # using the check_url option, then we can legitimately expect that
@@ -133,6 +184,20 @@ def create_request(url, session=None, timeout=DEFAULT_TIMEOUT, verify=True):
 
 
 def create_request_from_session(url, session, timeout=DEFAULT_TIMEOUT, verify=True):
+    """Create a webob.request.Request object from a requests.Session() object.
+
+    Parameters
+    ----------
+    url: str
+        URL to open
+    session: requests.Session() object
+        A requests.Session() object (potentially) containing authentication
+        cookies.
+    timeout: int
+        Timeout in seconds
+    verify: bool
+        Verify SSL certificate
+    """
     try:
         # Use session to follow redirects:
         with closing(

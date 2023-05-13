@@ -39,12 +39,14 @@ CORS_RESPONSES = ["dds", "das", "dods", "ver", "json"]
 def load_handlers(working_set=pkg_resources.working_set):
     r"""Load all handlers, returning them on a list.
 
-    Passing ``working_set`` is used only for unit testing. Check the following
-    discussion for an explanation about this:
+    Parameters
+    ----------
+    working_set : pkg_resources.WorkingSet
+        Passing ``working_set`` is used only for unit testing. Check the
+        following discussion for an explanation about this:
 
         http://grokbase.com/t/python/distutils-sig/074rc4a6hb/ \
                 distutils-programmatically-adding-entry-points
-
     """
     # Relative import of handlers:
     package = "dapclient"
@@ -64,7 +66,24 @@ def load_handlers(working_set=pkg_resources.working_set):
 
 
 def get_handler(filepath, handlers=None, instantiate=True):
-    """Given a filepath, return the corresponding instantiated handler."""
+    """Given a filepath, return the corresponding instantiated handler.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the file to be handled.
+    handlers : list
+        List of handlers to be checked. If not provided, all handlers are
+        loaded.
+    instantiate : bool
+        If True, return an instance of the handler. If False, return None if
+        the extension is supported, or raise an exception if not.
+
+    Returns
+    -------
+    handler : BaseHandler
+        Handler instance, if ``instantiate`` is True.
+    """
     # Check each handler to see which one handles this file.
     for handler in handlers or load_handlers():
         p = re.compile(handler.extensions)
@@ -132,7 +151,17 @@ class BaseHandler:
             return res(environ, start_response)
 
     def parse(self, projection, selection, buffer_size=BUFFER_SIZE):
-        """Parse the constraint expression, returning a new dataset."""
+        """Parse the constraint expression, returning a new dataset.
+
+        Parameters
+        ----------
+        projection : str
+            Projection expression.
+        selection : str
+            Selection expression.
+        buffer_size : int
+            Buffer size in bytes, for streaming data.
+        """
         if self.dataset is None:
             raise NotImplementedError(
                 "Subclasses must define a ``dataset`` attribute pointing to a"
@@ -187,7 +216,6 @@ def apply_selection(selection, dataset):
     """Apply a given selection to a dataset, modifying it inplace.
 
     Returns the original dataset.
-
     """
     for seq in walk(dataset, SequenceType):
         # apply only relevant selections

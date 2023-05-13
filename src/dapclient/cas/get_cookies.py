@@ -24,11 +24,29 @@ def setup_session(
     username_field="username",
     password_field="password",
 ):
-    """
-    A general function to set-up requests session with cookies
-    using beautifulsoup and by calling the right url.
-    """
+    """Set-up requests session with cookies.
 
+    Uses beautifulsoup and by calling the right url.
+
+    Parameters
+    ----------
+    uri : str or callable
+        The uri to use for authentication.
+    username : str, optional
+        The username to use for authentication.
+    password : str, optional
+        The password to use for authentication.
+    check_url : str, optional
+        The url to check the authentication on.
+    session : requests.Session, optional
+        The session to use for authentication.
+    verify : bool, optional
+        Whether to verify the connection.
+    username_field : str, optional
+        The username field to use for authentication.
+    password_field : str, optional
+        The password field to use for authentication.
+    """
     if session is None:
         # Connections must be closed since some CAS
         # will cough when connections are kept alive:
@@ -115,15 +133,19 @@ def setup_session(
 
 
 def raise_if_form_exists(url, session):
-    """
-    This function raises a UserWarning if the link has forms
+    """This function raises a UserWarning if the link has forms
+
+    Parameters
+    ----------
+    url : str
+        The url to check.
+    session : requests.Session
+        The session to use for checking.
     """
 
-    user_warning = (
-        f"Navigate to {url}, " + "login and follow instructions. "
-        "It is likely that you have to perform some one-time "
-        "registration steps before accessing this data."
-    )
+    user_warning = f"""Navigate to {url}, login and follow instructions.
+It is likely that you have to perform some one-time
+registration steps before accessing this data."""
 
     resp = session.get(url)
     soup = BeautifulSoup(resp.content, "lxml")
@@ -139,12 +161,38 @@ def soup_login(
     username_field="username",
     password_field="password",
 ):
+    """Login using beautifulsoup.
+
+    Parameters
+    ----------
+    session : requests.Session
+        The session to use for authentication.
+    url : str
+        The url to use for authentication.
+    username : str
+        The username to use for authentication.
+    password : str
+        The password to use for authentication.
+    username_field : str, optional
+        The username field to use for authentication.
+    password_field : str, optional
+        The password field to use for authentication.
+    """
     resp = session.get(url)
 
     soup = BeautifulSoup(resp.content, "lxml")
     login_form = soup.select("form")[0]
 
     def get_to_url(current_url, to_url):
+        """Get the url to use for authentication.
+
+        Parameters
+        ----------
+        current_url : str
+            The current url.
+        to_url : str
+            The url to use for authentication.
+        """
         split_current = urlsplit(current_url)
         split_to = urlsplit(to_url)
         comb = [
@@ -170,11 +218,11 @@ def soup_login(
             # for the first attempt. This is common when using
             # dapclient with the ESGF for the first time.
             raise Exception(
-                "Navigate to {}. "
-                "If you are unable to "
-                "login, you must either "
-                "wait or use authentication "
-                "from another service.".format(url)
+                f"""Navigate to {url}.
+If you are unable to
+login, you must either
+wait or use authentication
+from another service."""
             )
 
     # Replicate all other fields:

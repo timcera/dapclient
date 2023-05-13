@@ -2,10 +2,20 @@ from . import get_cookies
 
 
 def setup_session(username, password, check_url=None, session=None, verify=True):
-    """
-    A special call to get_cookies.setup_session that is tailored for
-    URS EARTHDATA at NASA credentials.
+    """Call to get_cookies.setup_session for URS EARTHDATA at NASA credentials.
 
+    Parameters
+    ----------
+    username : str
+        The username to use for authentication.
+    password : str
+        The password to use for authentication.
+    check_url : str, optional
+        The url to check the authentication on.
+    session : requests.Session, optional
+        The session to use for authentication.
+    verify : bool, optional
+        Whether to verify the connection.
     """
     if session is not None:
         # URS connections cannot be kept alive at the moment.

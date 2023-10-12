@@ -49,15 +49,13 @@ package.  I will add tests and features as time (and pull requests!) allow.
 Quickstart
 ----------
 You can install the latest version using
-[pip](http://pypi.python.org/pypi/pip). After [installing
-pip](http://www.pip-installer.org/en/latest/installing.html) you can
-install dapclient with this command::
+[pip](http://pypi.python.org/pypi/pip) or conda.
 
     $ pip install dapclient
 
-Also maintained on my [conda channel](https://anaconda.org/timcera/dapclient)::
+Also maintained on the conda-forge channel [conda channel](https://anaconda.org/conda-forge/dapclient)::
 
-    $ conda install -c timcera dapclient
+    $ conda install -c conda-forge dapclient
 
 This will install dapclient together with all the required
 dependencies. You can now open any remotely served dataset, and dapclient

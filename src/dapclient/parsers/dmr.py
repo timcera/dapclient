@@ -65,12 +65,12 @@ def get_variables(node, prefix=""):
     if group_name is None:
         return variables
     if node.tag != "Dataset":
-        prefix = prefix + "/" + group_name
+        prefix = f"{prefix}/{group_name}"
     for subnode in node:
         if subnode.tag in dmr_atomic_types:
             name = subnode.get("name")
             if prefix != "":
-                name = prefix + "/" + name
+                name = f"{prefix}/{name}"
             variables[name] = {"element": subnode}
         variables.update(get_variables(subnode, prefix))
     return variables
@@ -91,12 +91,12 @@ def get_named_dimensions(node, prefix=""):
     if group_name is None:
         return dimensions
     if node.tag != "Dataset":
-        prefix = prefix + "/" + group_name
+        prefix = f"{prefix}/{group_name}"
     for subnode in node:
         if subnode.tag == "Dimension":
             name = subnode.get("name")
             if prefix != "":
-                name = prefix + "/" + name
+                name = f"{prefix}/{name}"
             dimensions[name] = int(subnode.attrib["size"])
         dimensions.update(get_named_dimensions(subnode, prefix))
     return dimensions
@@ -111,8 +111,7 @@ def get_dtype(element):
         The element to get the dtype for.
     """
     dtype = element.tag
-    dtype = dap4_to_numpy_typemap(dtype)
-    return dtype
+    return dap4_to_numpy_typemap(dtype)
 
 
 def get_attributes(element):
@@ -182,9 +181,7 @@ def has_map(element):
         The element to check for a map.
     """
     maps = element.findall("Map")
-    if len(maps) > 0:
-        return True
-    return False
+    return len(maps) > 0
 
 
 def dmr_to_dataset(dmr):
@@ -209,13 +206,7 @@ def dmr_to_dataset(dmr):
 
     # Bootstrap variables
     for name, variable in variables.items():
-        variable["name"] = name
-        variable["attributes"] = get_attributes(variable["element"])
-        variable["dtype"] = get_dtype(variable["element"])
-        variable["dims"] = get_dim_names(variable["element"])
-        variable["has_map"] = has_map(variable["element"])
-        variable["shape"] = get_dim_sizes(variable["element"])
-
+        _extracted_from_dmr_to_dataset_23(name, variable)
     # Add size entry for dimension variables
     for name, size in named_dimensions.items():
         if name not in variables:
@@ -255,6 +246,16 @@ def dmr_to_dataset(dmr):
         dataset[var.name] = var
 
     return dataset
+
+
+# TODO Rename this here and in `dmr_to_dataset`
+def _extracted_from_dmr_to_dataset_23(name, variable):
+    variable["name"] = name
+    variable["attributes"] = get_attributes(variable["element"])
+    variable["dtype"] = get_dtype(variable["element"])
+    variable["dims"] = get_dim_names(variable["element"])
+    variable["has_map"] = has_map(variable["element"])
+    variable["shape"] = get_dim_sizes(variable["element"])
 
 
 class DMRParser:

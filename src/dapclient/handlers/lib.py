@@ -89,10 +89,7 @@ def get_handler(filepath, handlers=None, instantiate=True):
         p = re.compile(handler.extensions)
         if p.match(filepath):
             # only check if extension is supported - don't return instance
-            if not instantiate:
-                return None
-            return handler(filepath)
-
+            return handler(filepath) if instantiate else None
     raise ExtensionNotSupportedError(f"No handler available for file {filepath}.")
 
 
@@ -302,7 +299,7 @@ class ConstraintExpression:
 
     def __and__(self, other):
         """Join two CEs together, returning a new object."""
-        return self.__class__(self.value + "&" + str(other))
+        return self.__class__(f"{self.value}&{str(other)}")
 
     def __or__(self, other):
         raise ConstraintExpressionError(

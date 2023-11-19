@@ -64,11 +64,7 @@ def setup_session(
         verify_flag = session.verify
         session.verify = False
 
-    if isinstance(uri, str):
-        url = uri
-    else:
-        url = uri(check_url)
-
+    url = uri if isinstance(uri, str) else uri(check_url)
     if password is None or password == "":
         warnings.warn(
             "password was not set. "
@@ -108,7 +104,7 @@ def setup_session(
         # If there are further security levels.
         # At the moment only used for CEDA OPENID:
         if isinstance(full_url, list) and len(full_url) > 1:
-            for url in full_url[1:]:
+            for _ in full_url[1:]:
                 response = soup_login(
                     session,
                     response.url,
@@ -205,13 +201,15 @@ def soup_login(
     session.headers["Referer"] = resp.url
 
     payload = {}
-    if username_field is not None:
-        if len(login_form.findAll("input", {"name": username_field})) > 0:
-            payload.update({username_field: username})
+    if (
+        username_field is not None
+        and len(login_form.findAll("input", {"name": username_field})) > 0
+    ):
+        payload[username_field] = username
 
     if password_field is not None:
         if len(login_form.findAll("input", {"name": password_field})) > 0:
-            payload.update({password_field: password})
+            payload[password_field] = password
         else:
             # If there is no password_field, it might be because
             # something should be handled in the browser
@@ -228,7 +226,7 @@ from another service."""
     # Replicate all other fields:
     for input in login_form.findAll("input"):
         if input.get("name") not in payload and input.get("name") is not None:
-            payload.update({input.get("name"): input.get("value")})
+            payload[input.get("name")] = input.get("value")
 
     # Remove other submit fields:
     submit_type = "submit"

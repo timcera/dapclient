@@ -107,8 +107,7 @@ def _sequencetype(var):
         try:
             for child in var.children():
                 if DAP2_response_dtypemap(child.dtype).char == "S":
-                    (DAP2_types.append(DAP2_ARRAY_LENGTH_NUMPY_TYPE))  # string length
-                    DAP2_types.append(f"|S{position}")  # string padded to 4n
+                    DAP2_types.extend((DAP2_ARRAY_LENGTH_NUMPY_TYPE, f"|S{position}"))
                     position += 1
                 else:
                     # Convert any numpy dtypes to numpy dtypes compatible
@@ -152,9 +151,6 @@ def _sequencetype(var):
             # byteorder was taken care of during the upconversion:
             yield cache[DAP2_dtype_str].tobytes()
 
-        yield END_OF_SEQUENCE
-
-    # nested array, need to process individually
     else:
         # create a template structure
         struct = StructureType(var.name)
@@ -165,7 +161,8 @@ def _sequencetype(var):
             yield START_OF_SEQUENCE
             struct.data = record
             yield from dods(struct)
-        yield END_OF_SEQUENCE
+
+    yield END_OF_SEQUENCE
 
 
 @dods.register(BaseType)
@@ -183,11 +180,7 @@ def _basetype(var):
         # pack length for arrays
         length = np.prod(data.shape).astype(int)
 
-        # send length twice at the begining of an array...
-        factor = 2
-        if DAP2_dtype.char == "S":
-            # ... expcept for strings:
-            factor = 1
+        factor = 1 if DAP2_dtype.char == "S" else 2
         yield tostring_with_byteorder(
             length, np.dtype(DAP2_ARRAY_LENGTH_NUMPY_TYPE)
         ) * factor
@@ -210,33 +203,30 @@ def _basetype(var):
             yield tostring_with_byteorder(block, DAP2_dtype)
         yield (-length % 4) * b"\0"
 
-    # regular data
+    elif DAP2_dtype.char == "S":
+        for block in data:
+            for word in block.flat:
+                length = len(word)
+                yield tostring_with_byteorder(
+                    np.array(length), np.dtype(DAP2_ARRAY_LENGTH_NUMPY_TYPE)
+                )
+                # byteorder is not important for strings:
+                if hasattr(word, "encode"):
+                    yield word.encode("ascii")
+                elif hasattr(word, "tobytes"):
+                    yield word.tobytes()
+                else:
+                    raise TypeError(f"Could not convert word '{word}' to bytes")
+                yield (-length % 4) * b"\0"
     else:
-        # strings are also zero padded and preceeded by their length
-        if DAP2_dtype.char == "S":
-            for block in data:
-                for word in block.flat:
-                    length = len(word)
-                    yield tostring_with_byteorder(
-                        np.array(length), np.dtype(DAP2_ARRAY_LENGTH_NUMPY_TYPE)
-                    )
-                    # byteorder is not important for strings:
-                    if hasattr(word, "encode"):
-                        yield word.encode("ascii")
-                    elif hasattr(word, "tobytes"):
-                        yield word.tobytes()
-                    else:
-                        raise TypeError(f"Could not convert word '{word}' to bytes")
-                    yield (-length % 4) * b"\0"
-        else:
-            for block in data:
-                # Remember that DAP2_dtype is a
-                # numpy dtype that is compatible with the DAP2
-                # data model. This means that the dtype in
-                # DAP2_dtype is representable in DAP2 -- AND --
-                # the data in var can all be upconverted
-                # in a lossless manner to the dtype in DAP2_dtype.
-                yield tostring_with_byteorder(block, DAP2_dtype)
+        for block in data:
+            # Remember that DAP2_dtype is a
+            # numpy dtype that is compatible with the DAP2
+            # data model. This means that the dtype in
+            # DAP2_dtype is representable in DAP2 -- AND --
+            # the data in var can all be upconverted
+            # in a lossless manner to the dtype in DAP2_dtype.
+            yield tostring_with_byteorder(block, DAP2_dtype)
 
 
 def calculate_size(dataset):

@@ -325,11 +325,10 @@ class BaseType(DapType):
         return len(self.data)
 
     def __iter__(self):
-        if self._is_string_dtype:
-            for item in self.data:
+        for item in self.data:
+            if self._is_string_dtype:
                 yield np.vectorize(decode_np_strings)(item)
-        else:
-            for item in self.data:
+            else:
                 yield item
 
     @property
@@ -405,13 +404,12 @@ class StructureType(DapType, Mapping):
             return self._dict[quote(key)]
         except KeyError:
             splitted = key.split(".")
-            if len(splitted) > 1:
-                try:
-                    return self[splitted[0]][".".join(splitted[1:])]
-                except (KeyError, IndexError):
-                    return self[".".join(splitted[1:])]
-            else:
+            if len(splitted) <= 1:
                 raise
+            try:
+                return self[splitted[0]][".".join(splitted[1:])]
+            except (KeyError, IndexError):
+                return self[".".join(splitted[1:])]
 
     def _getitem_string_tuple(self, key):
         """Assume that key is a tuple of strings"""
@@ -725,8 +723,6 @@ class GridType(StructureType):
 
         out = copy.copy(self)
         for var, slice_ in zip(out.children(), [key] + list(key)):
-            if type(self.data).__name__ == "BaseProxyDap4":
-                pass
             var.data = self[var.name].data[slice_]
         return out
 

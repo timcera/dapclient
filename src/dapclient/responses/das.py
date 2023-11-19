@@ -172,6 +172,4 @@ def type_convert(obj):
     """
     if isinstance(obj, float):
         return "Float64"
-    if isinstance(obj, int):
-        return "Int32"
-    return "String"
+    return "Int32" if isinstance(obj, int) else "String"

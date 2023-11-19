@@ -211,7 +211,7 @@ def create_request_from_session(url, session, timeout=DEFAULT_TIMEOUT, verify=Tr
 
             # Set request cookies to the head cookies:
             req.headers["Cookie"] = ",".join(
-                name + "=" + cookies_dict[name] for name in cookies_dict
+                f"{name}={cookies_dict[name]}" for name in cookies_dict
             )
             # Set the headers to the session headers:
             for item in head.request.headers:

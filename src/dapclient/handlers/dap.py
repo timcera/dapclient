@@ -112,11 +112,7 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
             return "dap4"
 
         extension = self.path.split(".")[-1]
-        if extension in ("dmr", "dap"):
-            return "dap4"
-        if extension in ("dds", "dods"):
-            return "dap2"
-        return "dap2"
+        return "dap4" if extension in ("dmr", "dap") else "dap2"
 
     def make_dataset(
         self,
@@ -136,7 +132,13 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
     def dataset_from_dap4(self):
         """Make a dataset from a DAP4 URL."""
         dmr_url = urllib.parse.urlunsplit(
-            (self.scheme, self.netloc, self.path + ".dmr", self.query, self.fragment)
+            (
+                self.scheme,
+                self.netloc,
+                f"{self.path}.dmr",
+                self.query,
+                self.fragment,
+            )
         )
         r = dapclient.net.GET(
             dmr_url,
@@ -152,7 +154,13 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
     def dataset_from_dap2(self):
         """Make a dataset from a DAP2 URL."""
         dds_url = urllib.parse.urlunsplit(
-            (self.scheme, self.netloc, self.path + ".dds", self.query, self.fragment)
+            (
+                self.scheme,
+                self.netloc,
+                f"{self.path}.dds",
+                self.query,
+                self.fragment,
+            )
         )
         r = dapclient.net.GET(
             dds_url,
@@ -171,7 +179,13 @@ class DAPHandler(dapclient.handlers.lib.BaseHandler):
         Also pull the DAS and add additional attributes to the dataset.
         """
         das_url = urllib.parse.urlunsplit(
-            (self.scheme, self.netloc, self.path + ".das", self.query, self.fragment)
+            (
+                self.scheme,
+                self.netloc,
+                f"{self.path}.das",
+                self.query,
+                self.fragment,
+            )
         )
         r = dapclient.net.GET(
             das_url,
@@ -261,9 +275,7 @@ def get_charset(r, user_charset):
     user_charset : str
         The user's charset.
     """
-    charset = r.charset
-    if not charset:
-        charset = user_charset
+    charset = r.charset or user_charset
     return charset
 
 
@@ -362,7 +374,7 @@ class BaseProxyDap2:
         self.id = id
         self.dtype = dtype
         self.shape = shape
-        self.slice = slice_ or tuple(slice(None) for s in self.shape)
+        self.slice = slice_ or tuple(slice(None) for _ in self.shape)
         self.application = application
         self.session = session
         self.timeout = timeout
@@ -383,7 +395,7 @@ class BaseProxyDap2:
             (
                 scheme,
                 netloc,
-                path + ".dods",
+                f"{path}.dods",
                 urllib.parse.quote(self.id) + hyperslab(index) + "&" + query,
                 fragment,
             )
@@ -451,7 +463,7 @@ class BaseProxyDap4(BaseProxyDap2):
         self.id = id
         self.dtype = dtype
         self.shape = shape
-        self.slice = slice_ or tuple(slice(None) for s in self.shape)
+        self.slice = slice_ or tuple(slice(None) for _ in self.shape)
         self.application = application
         self.session = session
         self.timeout = timeout
@@ -467,9 +479,9 @@ class BaseProxyDap4(BaseProxyDap2):
         # build download url
         index = combine_slices(self.slice, fix_slice(index, self.shape))
         scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.baseurl)
-        ce = "dap4.ce=" + urllib.parse.quote(self.id) + hyperslab(index) + query
+        ce = f"dap4.ce={urllib.parse.quote(self.id)}{hyperslab(index)}{query}"
         url = urllib.parse.urlunsplit(
-            (scheme, netloc, path + ".dap", ce, fragment)
+            (scheme, netloc, f"{path}.dap", ce, fragment)
         ).rstrip("&")
 
         # download and unpack data
@@ -578,28 +590,24 @@ class SequenceProxy:
     def url(self):
         """Return url from where data is fetched."""
         scheme, netloc, path, query, fragment = urllib.parse.urlsplit(self.baseurl)
-        url = urllib.parse.urlunsplit(
+        return urllib.parse.urlunsplit(
             (
                 scheme,
                 netloc,
-                path + ".dods",
+                f"{path}.dods",
                 self.id + hyperslab(self.slice) + "&" + "&".join(self.selection),
                 fragment,
             )
         ).rstrip("&")
 
-        return url
-
     @property
     def id(self):
         """Return the id of this sequence."""
-        if self.sub_children:
-            id_ = ",".join(
-                urllib.parse.quote(child.id) for child in self.template.children()
-            )
-        else:
-            id_ = urllib.parse.quote(self.template.id)
-        return id_
+        return (
+            ",".join(urllib.parse.quote(child.id) for child in self.template.children())
+            if self.sub_children
+            else urllib.parse.quote(self.template.id)
+        )
 
     def __iter__(self):
         # download and unpack data
@@ -698,11 +706,7 @@ def unpack_sequence(stream, template):
         marker = stream.read(4)
         while marker == START_OF_SEQUENCE:
             rec = unpack_children(stream, template)
-            if not sequence:
-                rec = rec[0]
-            else:
-                rec = tuple(rec)
-            yield rec
+            yield tuple(rec) if sequence else rec[0]
             marker = stream.read(4)
 
 
@@ -907,7 +911,7 @@ def get_endianness(xdr_stream):
     xdr_stream : XDRStreamReader
         A stream of bytes.
     """
-    chunk_header = xdr_stream.peek(4)[0:4]
+    chunk_header = xdr_stream.peek(4)[:4]
     chunk_header = numpy.frombuffer(chunk_header, dtype=">u4")[0]
     chunk_type = (chunk_header >> 24) & 0xFF
     last, error, endian = decode_chunktype(chunk_type)
@@ -925,7 +929,7 @@ def unpack_dap4_data(xdr_stream, dataset):
         The dataset to unpack.
     """
     endian = get_endianness(xdr_stream)
-    checksum_dtype = numpy.dtype(endian + "u4")
+    checksum_dtype = numpy.dtype(f"{endian}u4")
     buffer = stream2bytearray(xdr_stream)
 
     start = 0

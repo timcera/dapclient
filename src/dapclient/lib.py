@@ -1,5 +1,7 @@
 """Basic functions related to the DAP spec."""
 
+
+import contextlib
 import operator
 from functools import reduce
 from itertools import zip_longest
@@ -154,12 +156,9 @@ def encode(obj):
     obj : object
         Object to encode.
     """
-    try:
+    with contextlib.suppress(TypeError):
         if np.all(np.isnan(obj)):
             return "NaN"
-    except TypeError:
-        pass
-
     if isinstance(obj, np.ndarray) and obj.dtype.char in "SU":
         return f'"{obj}"'
 
@@ -274,11 +273,7 @@ def hyperslab(slice_):
     slice_ : tuple of slices
         Slice to convert to DAP representation.
     """
-    if not isinstance(slice_, tuple):
-        slice_ = [slice_]
-    else:
-        slice_ = list(slice_)
-
+    slice_ = list(slice_) if isinstance(slice_, tuple) else [slice_]
     while slice_ and slice_[-1] == slice(None):
         slice_.pop(-1)
 
@@ -376,7 +371,7 @@ def load_from_entry_point_relative(rel, package):
     try:
         loaded = getattr(
             __import__(
-                rel.module_name.replace(package + ".", "", 1),
+                rel.module_name.replace(f"{package}.", "", 1),
                 globals(),
                 None,
                 [rel.attrs[0]],

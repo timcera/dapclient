@@ -139,7 +139,7 @@ def get_dmr_length(file_path):
     """
     with open(file_path, "rb") as f:
         # First two bytes are CRLF
-        if f.peek()[0:2] == b"\x04\x00":
+        if f.peek()[:2] == b"\x04\x00":
             f.seek(2)
             dmr_len = np.frombuffer(f.read(2), dtype=">u2")[0]
         else:
@@ -160,15 +160,14 @@ def open_dmr_file(file_path):
     """
     dmr_len = get_dmr_length(file_path)
     with open(file_path, "rb") as f:
-        if f.peek()[0:2] == b"\x04\x00":
+        if f.peek()[:2] == b"\x04\x00":
             # First 2 bytes are CRLF, second two bytes give the length of the
             # DMR; we skip over them
             f.seek(4)
             # We read the DMR minus the CRLF and newline (3 bytes)
         dmr = f.read(dmr_len)
     dmr = dmr.decode("ascii")
-    dataset = dapclient.parsers.dmr.dmr_to_dataset(dmr)
-    return dataset
+    return dapclient.parsers.dmr.dmr_to_dataset(dmr)
 
 
 def open_dap_file(file_path):
@@ -266,7 +265,7 @@ def open_dods_url(
 
     if metadata:
         scheme, netloc, path, query, fragment = urlsplit(url)
-        dasurl = urlunsplit((scheme, netloc, path[:-4] + "das", query, fragment))
+        dasurl = urlunsplit((scheme, netloc, f"{path[:-4]}das", query, fragment))
         r = dapclient.net.GET(
             dasurl, application, session, timeout=timeout, verify=verify
         )
@@ -326,7 +325,7 @@ class ServerFunction:
                 params.append(arg.id)
             else:
                 params.append(dapclient.lib.encode(arg))
-        id_ = self.name + "(" + ",".join(params) + ")"
+        id_ = f"{self.name}(" + ",".join(params) + ")"
         return ServerFunctionResult(
             self.baseurl, id_, self.application, self.session, timeout=self.timeout
         )
@@ -350,7 +349,7 @@ class ServerFunctionResult:
         self.timeout = timeout
 
         scheme, netloc, path, query, fragment = urlsplit(baseurl)
-        self.url = urlunsplit((scheme, netloc, path + ".dods", id_, None))
+        self.url = urlunsplit((scheme, netloc, f"{path}.dods", id_, None))
 
     def __getitem__(self, key):
         if self.dataset is None:

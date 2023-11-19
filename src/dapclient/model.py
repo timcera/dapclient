@@ -371,10 +371,7 @@ class StructureType(DapType, Mapping):
         self._dict = OrderedDict()
 
     def __repr__(self):
-        return "<{} with children {}>".format(
-            type(self).__name__,
-            ", ".join(map(repr, self._visible_keys)),
-        )
+        return f'<{type(self).__name__} with children {", ".join(map(repr, self._visible_keys))}>'
 
     def __getattr__(self, attr):
         """Lazy shortcut return children."""
@@ -697,11 +694,7 @@ class GridType(StructureType):
         self._output_grid = True
 
     def __repr__(self):
-        return "<{} with array {} and maps {}>".format(
-            type(self).__name__,
-            repr(list(self.keys())[0]),
-            ", ".join(map(repr, list(self.keys())[1:])),
-        )
+        return f'<{type(self).__name__} with array {repr(list(self.keys())[0])} and maps {", ".join(map(repr, list(self.keys())[1:]))}>'
 
     def __getitem__(self, key):
         # Return a child.

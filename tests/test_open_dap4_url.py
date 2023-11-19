@@ -14,7 +14,7 @@ def test_coads():
 def test_groups():
     url = "dap4://test.opendap.org:8080/opendap/dmrpp_test_files/ATL03_20181228015957_13810110_003_01.2var.h5.dmrpp"
     pydap_ds = dapclient.client.open_url(url)
-    data = pydap_ds["/gt1r/bckgrd_atlas/bckgrd_int_height"][0:10]
+    data = pydap_ds["/gt1r/bckgrd_atlas/bckgrd_int_height"][:10]
     assert data is not None
 
 

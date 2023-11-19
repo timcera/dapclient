@@ -9,8 +9,7 @@ def load_dmr_file(file_path):
     abs_path = os.path.join(os.path.dirname(__file__), file_path)
     with open(abs_path) as dmr_file:
         dmr = dmr_file.read()
-    dataset = dapclient.parsers.dmr.dmr_to_dataset(dmr)
-    return dataset
+    return dapclient.parsers.dmr.dmr_to_dataset(dmr)
 
 
 def test_single_scalar():

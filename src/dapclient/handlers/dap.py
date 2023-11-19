@@ -857,7 +857,7 @@ def get_count(variable):
     """
     count = int(numpy.array(variable.shape).prod())
     item_size = numpy.dtype(variable.dtype).itemsize
-    count = count * item_size
+    count *= item_size
     return count
 
 
@@ -967,8 +967,7 @@ def find_pattern_in_string_iter(pattern, i):
     length = len(pattern)
     for this_chunk in i:
         last_chunk += this_chunk
-        m = re.search(pattern, last_chunk)
-        if m:
+        if m := re.search(pattern, last_chunk):
             return last_chunk[m.end() :]
         last_chunk = last_chunk[-length:]
 

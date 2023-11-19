@@ -9,7 +9,7 @@ from dapclient.model import BaseType, DatasetType, SequenceType
 
 @pytest.fixture
 def simple_array():
-    arr = np.array(
+    return np.array(
         [
             (0, 1, 10.0),
             (1, 2, 20.0),
@@ -22,7 +22,6 @@ def simple_array():
         ],
         dtype=[("byte", "b"), ("int", "i4"), ("float", "f4")],
     )
-    return arr
 
 
 @pytest.fixture
@@ -34,7 +33,7 @@ def simple_object(simple_array):
     for var in simple_array.dtype.names:
         seq[var] = BaseType(var)
 
-    obj = IterData(
+    return IterData(
         [
             (0, 1, 10.0),
             (1, 2, 20.0),
@@ -47,7 +46,6 @@ def simple_object(simple_array):
         ],
         seq,
     )
-    return obj
 
 
 def test_iter(simple_array, simple_object):
@@ -157,8 +155,7 @@ def nested_data():
         [],
         [(31, 32, 33), (41, 42, 43), (51, 52, 53), (61, 62, 63)],
     ]
-    nested = [x + (deep_data[x_id],) for x_id, x in enumerate(shallow_data)]
-    return nested
+    return [x + (deep_data[x_id],) for x_id, x in enumerate(shallow_data)]
 
 
 @pytest.fixture
@@ -185,8 +182,7 @@ def nested_object(nested_data):
     for var in ["e", "f", "g"]:
         seq["d"][var] = BaseType(var)
 
-    nested = IterData(nested_data, seq)
-    return nested
+    return IterData(nested_data, seq)
 
 
 def test_nested_iter(nested_data, nested_object):

@@ -1,6 +1,5 @@
 """Basic functions related to the DAP spec."""
 
-
 import contextlib
 import operator
 from functools import reduce

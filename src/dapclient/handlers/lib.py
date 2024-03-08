@@ -284,7 +284,6 @@ def apply_projection(projection, dataset):
 
 
 class ConstraintExpression:
-
     """An object representing a selection on a constraint expression.
 
     These can be accumulated so that they are evaluated only once.
@@ -308,7 +307,6 @@ class ConstraintExpression:
 
 
 class IterData:
-
     """Class for manipulating data streams as structured arrays.
 
     A structured array is a Numpy construct that has some very interesting

@@ -38,7 +38,6 @@ DDS = """Dataset {
 
 
 class TestBuildDataset(unittest.TestCase):
-
     """Test DDS parser."""
 
     def setUp(self):

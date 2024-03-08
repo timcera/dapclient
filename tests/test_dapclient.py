@@ -6,7 +6,6 @@ import dapclient
 
 
 class TestNamespace(unittest.TestCase):
-
     """Test dapclient namespace."""
 
     def test_namespace(self):

@@ -6,7 +6,6 @@ from dapclient.exceptions import DapError
 
 
 class TestExceptions(unittest.TestCase):
-
     """Test dapclient base exception.
 
     Other exceptions behave exactly like the superclass, differing only by

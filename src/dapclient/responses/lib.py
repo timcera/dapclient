@@ -36,7 +36,6 @@ def load_responses():
 
 
 class BaseResponse:
-
     """A base class for dapclient responses.
 
     A dapclient response is a WSGI application that converts a dataset into any

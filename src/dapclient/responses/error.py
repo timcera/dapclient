@@ -15,7 +15,6 @@ from dapclient.lib import encode
 
 
 class ErrorResponse:
-
     """A specialized response for errors.
 
     This is a special response used when an exception is captured and passed to

@@ -173,7 +173,6 @@ def parse_hyperslab(hyperslab):
 
 
 class SimpleParser:
-
     """A very simple parser."""
 
     def __init__(self, inputstr, flags=0):

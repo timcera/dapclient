@@ -43,7 +43,6 @@ DAS = """Attributes {
 
 
 class TestParseDAS(unittest.TestCase):
-
     """Test DAS parser."""
 
     def setUp(self):

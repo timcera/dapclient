@@ -16,7 +16,6 @@ from .datasets import VerySimpleSequence
 
 
 class TestParseProjection(unittest.TestCase):
-
     """Test projection parser.
 
     The projection is a comma separated list of variable ids (or names, if the
@@ -52,7 +51,6 @@ class TestParseProjection(unittest.TestCase):
 
 
 class TestParseSelection(unittest.TestCase):
-
     """Test selection parser."""
 
     def test_simple(self):
@@ -71,7 +69,6 @@ class TestParseSelection(unittest.TestCase):
 
 
 class TestParseCe(unittest.TestCase):
-
     """Test the constraint expression parser."""
 
     def test_empty(self):
@@ -129,7 +126,6 @@ class TestParseCe(unittest.TestCase):
 
 
 class TestParseHyperslab(unittest.TestCase):
-
     """Test hyperslab parser."""
 
     def test_point(self):
@@ -158,7 +154,6 @@ class TestParseHyperslab(unittest.TestCase):
 
 
 class TestSimpleParser(unittest.TestCase):
-
     """Test the base class for the DAS/DDS parsers."""
 
     def test_peek_existing(self):

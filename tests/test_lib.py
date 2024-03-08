@@ -20,7 +20,6 @@ from dapclient.model import BaseType, DatasetType, StructureType
 
 
 class TestQuote(unittest.TestCase):
-
     """Test quoting.
 
     According to the DAP 2 specification a variable name MUST contain only
@@ -43,7 +42,6 @@ class TestQuote(unittest.TestCase):
 
 
 class TestEncode(unittest.TestCase):
-
     """Test encoding.
 
     According to the DAP 2 specification, numbers must be encoded using the C
@@ -80,7 +78,6 @@ class TestEncode(unittest.TestCase):
 
 
 class TestFixSlice(unittest.TestCase):
-
     """Test the ``fix_slice`` function."""
 
     def test_not_tuple(self):
@@ -139,7 +136,6 @@ class TestFixSlice(unittest.TestCase):
 
 
 class TestCombineSlices(unittest.TestCase):
-
     """Test the ``combine_slices`` function."""
 
     def test_not_tuple(self):
@@ -196,7 +192,6 @@ class TestCombineSlices(unittest.TestCase):
 
 
 class TestHyperslab(unittest.TestCase):
-
     """Test hyperslab generation from Python slices."""
 
     def test_no_tuple(self):
@@ -216,7 +211,6 @@ class TestHyperslab(unittest.TestCase):
 
 
 class TestWalk(unittest.TestCase):
-
     """Test the ``walk`` function to iterate over a dataset."""
 
     def setUp(self):
@@ -237,7 +231,6 @@ class TestWalk(unittest.TestCase):
 
 
 class TestFixShorthand(unittest.TestCase):
-
     """Test the ``fix_shorthand`` function."""
 
     def test_fix_projection(self):
@@ -263,7 +256,6 @@ class TestFixShorthand(unittest.TestCase):
 
 
 class TestGetVar(unittest.TestCase):
-
     """Test the ``get_var`` function."""
 
     def test_get_var(self):

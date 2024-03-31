@@ -122,7 +122,7 @@ def open_file(file_path, das_path=None):
     if extension == "dods":
         return open_dods_file(file_path=file_path, das_path=das_path)
     if extension == "dap":
-        return open_dap_file(file_path=file_path)
+        return open_dap_file(file_path=file_path, das_path=das_path)
     if extension == "dds":
         return None
     if extension == "dmr":

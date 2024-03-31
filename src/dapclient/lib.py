@@ -51,6 +51,10 @@ NUMPY_TO_DAP2_TYPEMAP = {
 
 # DAP2 demands big-endian 32 bytes signed integers
 # www.opendap.org/pdf/dap_2_data_model.pdf
+# Before pydap 3.2.2, length was
+# big-endian 32 bytes UNSIGNED integers:
+# DAP2_ARRAY_LENGTH_NUMPY_TYPE = '>I'
+# Since pydap 3.2.2, the length type is accurate:
 DAP2_ARRAY_LENGTH_NUMPY_TYPE = ">i"
 
 DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
@@ -98,30 +102,30 @@ LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
     "uint16": ">H",
     "int32": ">i",
     "uint32": ">I",
-    "int": ">i",
-    "uint": ">I",
     # "int8": ">b",  # DAP2 does not support signed bytes
     "uint8": ">B",
     "byte": "B",
     "string": STRING,
     "url": STRING,
+    "int": ">i",
+    "uint": ">I",
 }
 
 # Typemap from lower case DAP4 types to
 # numpy dtype string with specified endianiness.
 # Here, the endianness is very important:
 DAP4_TO_NUMPY_PARSER_TYPEMAP = {
-    "Float64": ">f8",
-    "Float32": ">f4",
     "Float16": ">f2",
-    "Int64": ">i8",
-    "UInt64": ">u8",
-    "Int32": ">i4",
-    "UInt32": ">u4",
-    "Int16": ">i2",
-    "UInt16": ">u2",
+    "Float32": ">f4",
+    "Float64": ">f8",
     "Int8": ">i1",
     "UInt8": ">u1",
+    "Int16": ">i2",
+    "UInt16": ">u2",
+    "Int32": ">i4",
+    "UInt32": ">u4",
+    "Int64": ">i8",
+    "UInt64": ">u8",
     "Byte": "B",
     "String": STRING,
     "Url": STRING,
@@ -169,6 +173,9 @@ def encode(obj):
 
 def fix_slice(slice_, shape):
     """Return a normalized slice.
+
+    This function returns a slice so that it has the same length of `shape`,
+    and no negative indexes, if possible.
 
     This is based on this document:
     http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html

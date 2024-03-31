@@ -52,7 +52,10 @@ def test_grid_data():
   [ 1.2833333e-01 -5.0000016e-02 -6.3636363e-02 -1.4166667e-01]
   [ 6.3800001e-01  8.9538461e-01  7.2166663e-01  8.1000000e-01]]]"""
     )
-    assert str(grid.COADSX[:]) == "<BaseType with data array([41., 43., 45., 47.])>"
+    assert (
+        str(grid.COADSX[:])
+        == "<BaseType with data array([41., 43., 45., 47.], dtype='>f8')>"
+    )
 
 
 @pytest.mark.client

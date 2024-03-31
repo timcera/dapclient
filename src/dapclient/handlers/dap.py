@@ -967,7 +967,8 @@ def find_pattern_in_string_iter(pattern, i):
     length = len(pattern)
     for this_chunk in i:
         last_chunk += this_chunk
-        if m := re.search(pattern, last_chunk):
+        m = re.search(pattern, last_chunk)
+        if m:
             return last_chunk[m.end() :]
         last_chunk = last_chunk[-length:]
 

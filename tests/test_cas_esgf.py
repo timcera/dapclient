@@ -22,7 +22,7 @@ test_url = url + ".dods?orog[0:1:4][0:1:4]"
     not (
         os.environ.get("OPENID_ESGF_NO_REG") and os.environ.get("PASSWORD_ESGF_NO_REG")
     ),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_registration_esgf_auth():
     """

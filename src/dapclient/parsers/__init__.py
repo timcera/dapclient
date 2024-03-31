@@ -182,12 +182,14 @@ class SimpleParser:
     def peek(self, regexp):
         """Check if a token is present and return it."""
         p = re.compile(regexp, self.flags)
-        return m.group() if (m := p.match(self.buffer)) else ""
+        m = p.match(self.buffer)
+        return m.group() if m else ""
 
     def consume(self, regexp):
         """Consume a token from the buffer and return it."""
         p = re.compile(regexp, self.flags)
-        if not (m := p.match(self.buffer)):
+        m = p.match(self.buffer)
+        if not m:
             raise Exception(f"Unable to parse token: {self.buffer[:10]}")
         token = m.group()
         self.buffer = self.buffer[len(token) :]

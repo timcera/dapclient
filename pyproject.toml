@@ -104,7 +104,8 @@ markers = [
     "client",
     "prod_url",
     "good_url",
-    "auth"
+    "auth",
+    "skip"
 ]
 
 [tool.setuptools]

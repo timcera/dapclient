@@ -7,9 +7,9 @@ dapclient's implementation is reverse engineered from the official server.
 
 import copy
 from functools import singledispatch
+from importlib.metadata import version
 
 import numpy as np
-from pkg_resources import get_distribution
 
 from dapclient.lib import encode
 from dapclient.model import BaseType, SequenceType, StructureType
@@ -20,7 +20,7 @@ from dapclient.responses.lib import BaseResponse
 class ASCIIResponse(BaseResponse):
     """The ASCII response."""
 
-    __version__ = get_distribution("dapclient").version
+    __version__ = version("dapclient")
 
     def __init__(self, dataset):
         BaseResponse.__init__(self, dataset)

@@ -13,7 +13,6 @@ import re
 import sys
 
 import numpy as np
-import pkg_resources
 from numpy.lib.arrayterator import Arrayterator
 from webob import Request
 
@@ -36,31 +35,23 @@ BUFFER_SIZE = 2**27
 CORS_RESPONSES = ["dds", "das", "dods", "ver", "json"]
 
 
-def load_handlers(working_set=pkg_resources.working_set):
-    r"""Load all handlers, returning them on a list.
-
-    Parameters
-    ----------
-    working_set : pkg_resources.WorkingSet
-        Passing ``working_set`` is used only for unit testing. Check the
-        following discussion for an explanation about this:
-
-        http://grokbase.com/t/python/distutils-sig/074rc4a6hb/ \
-                distutils-programmatically-adding-entry-points
-    """
+def load_handlers():
+    r"""Load all handlers, returning them on a list."""
     # Relative import of handlers:
     package = "dapclient"
     entry_points = "dapclient.handler"
+
+    entry_points_impl = entry_points()
+    if hasattr(entry_points_impl, "select"):
+        eps = entry_points_impl.select(group=group_name)
+    else:
+        eps = entry_points_impl.get(group_name, [])
     base_dict = dict(
         load_from_entry_point_relative(r, package)
-        for r in working_set.iter_entry_points(entry_points)
+        for r in eps
         if r.module_name.startswith(package)
     )
-    opts_dict = {
-        r.name: r.load()
-        for r in working_set.iter_entry_points(entry_points)
-        if not r.module_name.startswith(package)
-    }
+    opts_dict = {r.name: r.load() for r in eps if not r.module_name.startswith(package)}
     base_dict.update(opts_dict)
     return base_dict.values()
 

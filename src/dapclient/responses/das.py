@@ -8,9 +8,9 @@ downloaded.
 
 from collections.abc import Iterable
 from functools import singledispatch
+from importlib.metadata import version
 
 import numpy as np
-from pkg_resources import get_distribution
 
 from dapclient.lib import NUMPY_TO_DAP2_TYPEMAP, encode, quote
 from dapclient.model import BaseType, DatasetType, GridType, SequenceType, StructureType
@@ -22,7 +22,7 @@ INDENT = " " * 4
 class DASResponse(BaseResponse):
     """The DAS response."""
 
-    __version__ = get_distribution("dapclient").version
+    __version__ = version("dapclient")
 
     def __init__(self, dataset):
         BaseResponse.__init__(self, dataset)

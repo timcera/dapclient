@@ -5,10 +5,10 @@ formated as a DAP error response.
 
 """
 
+from importlib.metadata import version
 from io import StringIO
 from traceback import print_exception
 
-from pkg_resources import get_distribution
 from webob import Response
 
 from dapclient.lib import encode
@@ -42,8 +42,6 @@ class ErrorResponse:
         res.content_type = "text/plain"
         res.charset = "utf-8"
         res.headers.add("Content-description", "dods_error")
-        res.headers.add(
-            "XDODS-Server", f"dapclient/{get_distribution('dapclient').version}"
-        )
+        res.headers.add("XDODS-Server", f"dapclient/{version('dapclient')}")
 
         return res(environ, start_response)

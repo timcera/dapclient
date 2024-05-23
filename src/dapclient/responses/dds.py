@@ -9,8 +9,7 @@ necessary.
 """
 
 from functools import singledispatch
-
-from pkg_resources import get_distribution
+from importlib.metadata import version
 
 from dapclient.lib import NUMPY_TO_DAP2_TYPEMAP
 from dapclient.model import BaseType, DatasetType, GridType, SequenceType, StructureType
@@ -22,7 +21,7 @@ INDENT = " " * 4
 class DDSResponse(BaseResponse):
     """The DDS response."""
 
-    __version__ = get_distribution("dapclient").version
+    __version__ = version("dapclient")
 
     def __init__(self, dataset):
         BaseResponse.__init__(self, dataset)

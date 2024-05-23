@@ -10,7 +10,7 @@ KML, WMS, JSON, etc., installed as third-party Python packages that declare the
 
 """
 
-from pkg_resources import get_distribution, iter_entry_points
+from importlib.metadata import entry_points, version
 
 from dapclient.lib import load_from_entry_point_relative
 from dapclient.model import DatasetType
@@ -20,17 +20,19 @@ def load_responses():
     """Load all available responses from the system, returning a dictionary."""
     # Relative import of responses:
     package = "dapclient"
-    entry_points = "dapclient.response"
+    group_name = "dapclient.response"
+
+    entry_points_impl = entry_points()
+    if hasattr(entry_points_impl, "select"):
+        eps = entry_points_impl.select(group=group_name)
+    else:
+        eps = entry_points_impl.get(group_name, [])
     base_dict = dict(
         load_from_entry_point_relative(r, package)
-        for r in iter_entry_points(entry_points)
+        for r in eps
         if r.module_name.startswith(package)
     )
-    opts_dict = {
-        r.name: r.load()
-        for r in iter_entry_points(entry_points)
-        if not r.module_name.startswith(package)
-    }
+    opts_dict = {r.name: r.load() for r in eps if not r.module_name.startswith(package)}
     base_dict.update(opts_dict)
     return base_dict
 
@@ -60,9 +62,7 @@ class BaseResponse:
 
     def __init__(self, dataset):
         self.dataset = dataset
-        self.headers = [
-            ("XDODS-Server", f"dapclient/{get_distribution('dapclient').version}")
-        ]
+        self.headers = [("XDODS-Server", f"dapclient/{version('dapclient')}")]
 
     def __call__(self, environ, start_response):
         start_response("200 OK", self.headers)

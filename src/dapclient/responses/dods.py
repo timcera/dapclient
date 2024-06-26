@@ -181,9 +181,10 @@ def _basetype(var):
         length = np.prod(data.shape).astype(int)
 
         factor = 1 if DAP2_dtype.char == "S" else 2
-        yield tostring_with_byteorder(
-            length, np.dtype(DAP2_ARRAY_LENGTH_NUMPY_TYPE)
-        ) * factor
+        yield (
+            tostring_with_byteorder(length, np.dtype(DAP2_ARRAY_LENGTH_NUMPY_TYPE))
+            * factor
+        )
 
     # make data iterable; 1D arrays must be converted to 2D, since
     # iteration over 1D yields scalars which are not properly cast to big

@@ -36,8 +36,11 @@ CORS_RESPONSES = ["dds", "das", "dods", "ver", "json"]
 
 
 def load_handlers():
-    r"""Load all handlers, returning them on a list."""
+    r"""Load all handlers, returning them on a list.  Haven't used this
+    function yet, but it's here for future use."""
     # Relative import of handlers:
+    group_name = None
+
     package = "dapclient"
     entry_points = "dapclient.handler"
 

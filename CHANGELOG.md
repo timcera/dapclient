@@ -1,3 +1,10 @@
+## v1.0.5 (2024-07-04)
+
+### Fix
+
+- fix import of Arrayterator for python 3.12
+- remove pkg_resources to run on python 3.12
+
 ## v1.0.4 (2024-03-31)
 
 ### Fix

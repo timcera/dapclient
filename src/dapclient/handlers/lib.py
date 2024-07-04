@@ -13,7 +13,7 @@ import re
 import sys
 
 import numpy as np
-from numpy.lib.arrayterator import Arrayterator
+from numpy.lib import Arrayterator
 from webob import Request
 
 from dapclient.exceptions import ConstraintExpressionError, ExtensionNotSupportedError

@@ -46,7 +46,7 @@ keywords = [
     "filter"
 ]
 license = {text = "BSD-3-Clause"}
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 
 [project.urls]
 documentation = "https://timcera.bitbucket.io/dapclient/docs/index.html#dapclient-documentation"

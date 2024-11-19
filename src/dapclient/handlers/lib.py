@@ -13,7 +13,6 @@ import re
 import sys
 
 import numpy as np
-from numpy.lib import Arrayterator
 from webob import Request
 
 from dapclient.exceptions import ConstraintExpressionError, ExtensionNotSupportedError
@@ -165,7 +164,7 @@ class BaseHandler:
         # apply the selection to the dataset, inplace
         apply_selection(selection, dataset)
 
-        # wrap data in Arrayterator, to optimize projection/selection
+        # wrap data in np.lib.Arrayterator, to optimize projection/selection
         dataset = wrap_arrayterator(dataset, buffer_size)
 
         # fix projection
@@ -182,7 +181,7 @@ class BaseHandler:
 
 
 def wrap_arrayterator(dataset, size):
-    """Wrap `BaseType` objects in an Arrayterator.
+    """Wrap `BaseType` objects in an np.lib.Arrayterator.
 
     This function is used to optimize access to huge datasets. It returns a new
     dataset with data wrapped in Arrayterators. This way the data is read in
@@ -193,12 +192,12 @@ def wrap_arrayterator(dataset, size):
     """
     for var in walk(dataset, BaseType):
         if (
-            not isinstance(var.data, Arrayterator)
+            not isinstance(var.data, np.lib.Arrayterator)
             and var.data.dtype.itemsize
             and var.data.shape
         ):
             elements = size // var.data.dtype.itemsize
-            var.data = Arrayterator(var.data, elements)
+            var.data = np.lib.Arrayterator(var.data, elements)
 
     return dataset
 

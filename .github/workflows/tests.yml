@@ -29,6 +29,10 @@ jobs:
                       pandas-versions: 2.0.0
                     - python-versions: '3.13'
                       pandas-versions: 2.2.0
+                    - python-versions: '3.8'
+                      pandas-versions: 2.2.0
+                    - python-versions: '3.8'
+                      pandas-versions: 2.2.3
 
         steps:
             - name: Checkout repository

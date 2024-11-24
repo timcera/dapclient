@@ -1,3 +1,9 @@
+## v1.0.6 (2024-11-24)
+
+### Fix
+
+- fixed Arrayterator import
+
 ## v1.0.5 (2024-07-04)
 
 ### Fix

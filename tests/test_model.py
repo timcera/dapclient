@@ -476,7 +476,7 @@ def test_GridType_repr(gridtype_example):
 
 def test_GridType_dtype(gridtype_example):
     """Test ``dtype`` of grids."""
-    assert gridtype_example.dtype == np.dtype("l")
+    assert gridtype_example.dtype == np.dtype("int64")
 
 
 def test_GridType_shape(gridtype_example):

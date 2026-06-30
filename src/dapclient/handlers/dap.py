@@ -1,7 +1,7 @@
 """A handler for remote datasets.
 
 DAP handlers convert from different data formats (NetCDF, eg) to the internal
-dapclient model. The dapclient client is just a handler that converts from a remote
+pydap model. The pydap client is just a handler that converts from a remote
 dataset to the internal model.
 
 """
@@ -16,13 +16,15 @@ import logging
 import pprint
 import re
 import sys
+import tempfile
 import warnings
-from concurrent.futures import ThreadPoolExecutor
 from io import BufferedReader, BytesIO
 from itertools import chain
+from pathlib import Path
 
 import numpy
 import requests
+import requests_cache
 from requests.utils import urlparse, urlunparse
 from webob.response import Response as webob_Response
 
@@ -38,15 +40,41 @@ from dapclient.lib import (
     encode,
     fix_slice,
     hyperslab,
+    old_BytesReader,
+    unquote,
     walk,
 )
-from dapclient.model import BaseType, GridType, SequenceType, StructureType
+from dapclient.model import (
+    BaseType,
+    DapDecodedArray,
+    DatasetType,
+    GridType,
+    GroupType,
+    SequenceType,
+    StructureType,
+)
 from dapclient.net import GET
 from dapclient.parsers import parse_ce
 from dapclient.parsers.das import add_attributes, parse_das
 from dapclient.parsers.dds import dds_to_dataset
 from dapclient.parsers.dmr import dmr_to_dataset
 from dapclient.responses.dods import DAP2_response_dtypemap
+
+# from xml.etree import ElementTree as ET
+
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
+try:
+    from netCDF4 import Dataset
+
+    HAVE_NETCDF4 = True
+except Exception:
+    Dataset = None
+    HAVE_NETCDF4 = False
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -63,27 +91,33 @@ class DAPHandler(BaseHandler):
         application=None,
         session=None,
         output_grid=True,
+        flat=True,
         timeout=DEFAULT_TIMEOUT,
         verify=True,
+        checksums=True,
         user_charset="ascii",
         protocol=None,
         get_kwargs=None,
     ):
+
         self.application = application
         self.session = session
         self.output_grid = output_grid
+        self.flat = flat
         self.timeout = timeout
         self.verify = verify
+        self.checksums = checksums
         self.user_charset = user_charset
+        self.get_kwargs = get_kwargs or {}
         self.url = url
-
+        # urlparse returns an additional var compared to
+        # urlsplit: `param`. Will toss it.
         scheme, netloc, path, _, query, fragment = urlparse(self.url)
         self.scheme = scheme
         self.netloc = netloc
         self.path = path
         self.query = query
         self.fragment = fragment
-
         if protocol:
             if protocol not in ["dap2", "dap4"]:
                 raise TypeError("protocol must be one of `dap2` or `dap4")
@@ -92,10 +126,9 @@ class DAPHandler(BaseHandler):
                 # the other alternative occurs during testing
                 # the server - only when protocol and scheme match,
                 # should pydap change the scheme provided by user
-                self.scheme = "http"
+                self.scheme = "https"
         else:
             self.protocol = self.determine_protocol()
-        self.get_kwargs = get_kwargs or {}
 
         self.projection, self.selection = parse_ce(self.query, self.protocol)
         arg = (
@@ -118,7 +151,7 @@ class DAPHandler(BaseHandler):
         if self.scheme not in ["http", "https"]:
             if self.scheme in ["dap4", "dap2"]:
                 protocol = self.scheme
-                self.scheme = "http"  # revert to http
+                self.scheme = "https"
                 return protocol
             else:
                 raise TypeError(
@@ -127,7 +160,6 @@ class DAPHandler(BaseHandler):
                 )
         if self.query[:4] == "dap4":
             return "dap4"
-
         else:
             warnings.warn(
                 "PyDAP was unable to determine the DAP protocol defaulting "
@@ -142,12 +174,6 @@ class DAPHandler(BaseHandler):
     def make_dataset(
         self,
     ):
-        """Make a dataset from a DAP URL.
-
-        This method is called by the constructor. It is also called by
-        the BaseProxyDAP2 class to make a dataset from a DAP URL that
-        has been modified by a projection.
-        """
         if self.protocol == "dap4":
             self.dataset_from_dap4()
         else:
@@ -178,7 +204,7 @@ class DAPHandler(BaseHandler):
             get_kwargs=self.get_kwargs,
         )
         dmr = safe_charset_text(r, self.user_charset)
-        self.dataset = dmr_to_dataset(dmr)
+        self.dataset = dmr_to_dataset(dmr, self.flat)
 
     def dataset_from_dap2(self):
         # escape for certain characters
@@ -210,7 +236,7 @@ class DAPHandler(BaseHandler):
             (
                 self.scheme,
                 self.netloc,
-                f"{self.path}.das",
+                self.path + ".das",
                 "",
                 self.query,
                 self.fragment,
@@ -228,7 +254,6 @@ class DAPHandler(BaseHandler):
         add_attributes(self.dataset, parse_das(das))
 
     def add_proxies(self):
-        """Add proxies to the dataset."""
         if self.protocol == "dap4":
             self.add_dap4_proxies()
         else:
@@ -237,10 +262,24 @@ class DAPHandler(BaseHandler):
     def add_dap4_proxies(self):
         # remove any projection from the base_url, leaving selections
         for var in walk(self.dataset, BaseType):
-            if var.path is not None:
-                var_name = var.path + "/" + var.name
+            if hasattr(var, "parent") and isinstance(var.parent, StructureType):
+                if var.parent.type == "Group":
+                    var_name = var.parent.id + "/" + var.name
+                elif isinstance(var.parent, DatasetType):
+                    var_name = var.name
+                elif var.parent.type == "Structure" or isinstance(
+                    var.parent, SequenceType
+                ):
+                    var_name = var.parent.id + "." + var.name
             else:
-                var_name = var.name
+                if var.path is not None:
+                    var_name = (
+                        var.path + "/" + var.name
+                        if var.path[-1] != "/"
+                        else var.path + var.name
+                    )
+                else:
+                    var_name = var.name
             var.data = BaseProxyDap4(
                 self.base_url,
                 var_name,
@@ -250,8 +289,20 @@ class DAPHandler(BaseHandler):
                 session=self.session,
                 timeout=self.timeout,
                 verify=self.verify,
+                checksums=self.checksums,
                 get_kwargs={**self.get_kwargs, "stream": True},
             )
+
+        for var in walk(self.dataset, SequenceType):
+            warnings.warn(
+                f"The remote file contains Sequence `{var.name}`"
+                ". Sequences in DAP4 are not fully supported and their"
+                " use may lead to unexpected results."
+            )
+
+        self.dataset.assign_dataset_recursive(self.dataset)
+        # self.dataset.enable_batch_mode()
+
         # apply projections to BaseType only
         # CE for sequences and structs
         # are not ready (see https://github.com/pydap/pydap/issues/314)
@@ -261,7 +312,7 @@ class DAPHandler(BaseHandler):
                 token, index = var.pop(0)
                 target = target[token]
                 if isinstance(target, BaseType):
-                    target.data.slice = fix_slice(index, target.shape)
+                    target.data.slice = fix_slice(index, target.shape, projection=True)
 
     def add_dap2_proxies(self):
         # now add data proxies
@@ -297,9 +348,9 @@ class DAPHandler(BaseHandler):
                 token, index = var.pop(0)
                 target = target[token]
                 if isinstance(target, BaseType):
-                    target.data.slice = fix_slice(index, target.shape)
+                    target.data.slice = fix_slice(index, target.shape, projection=True)
                 elif isinstance(target, GridType):
-                    index = fix_slice(index, target.array.shape)
+                    index = fix_slice(index, target.array.shape, projection=True)
                     target.array.data.slice = index
                     for s, child in zip(index, target.maps):
                         target[child].data.slice = (s,)
@@ -332,17 +383,9 @@ def safe_charset_text(r, user_charset):
 
 
 def safe_dds_and_data(r, user_charset):
-    """Get the dds and data from a response, handling the charset.
-
-    Takes the raw response of a dap2 request and splits it into the dds and
-    data. If the response is gzipped, it is decompressed first.
-
-    Parameters
-    ----------
-    r : requests.Response
-        The response.
-    user_charset : str
-        The user's charset.
+    """
+    Takes the raw response of a dap2 request and splits it into the dds and data.
+    If the response is gzipped, it is decompressed first.
     """
     dds, data = None, None  # initialize
     if isinstance(r, webob_Response):
@@ -428,7 +471,7 @@ class BaseProxyDap2(object):
 
         # Parse received dataset:
         dataset = dds_to_dataset(dds)
-        dataset.data = unpack_dap2_data(BytesReader(data), dataset)
+        dataset.data = unpack_dap2_data(old_BytesReader(data), dataset)
         return dataset[self.id].data
 
     def __len__(self):
@@ -469,6 +512,7 @@ class BaseProxyDap4(BaseProxyDap2):
         session=None,
         timeout=DEFAULT_TIMEOUT,
         verify=True,
+        checksums=False,
         user_charset="ascii",
         get_kwargs=None,
     ):
@@ -481,24 +525,56 @@ class BaseProxyDap4(BaseProxyDap2):
         self.session = session
         self.timeout = timeout
         self.verify = verify
+        self.checksums = checksums
         self.user_charset = user_charset
         self.get_kwargs = get_kwargs or {}
+        self.ce = None
 
     def __repr__(self):
         return "Dap4BaseProxy(%s)" % ", ".join(
-            map(repr, [self.baseurl, self.id, self.dtype, self.shape, self.slice])
+            map(
+                repr,
+                [
+                    self.baseurl,
+                    self.id,
+                    self.dtype,
+                    self.shape,
+                    self.ce if self.ce is not None else self.slice,
+                ],
+            )
         )
 
-    def __getitem__(self, index):
+    def __getitem__(self, index, build_only=False):
         # build download url
         index = combine_slices(self.slice, fix_slice(index, self.shape))
-        scheme, netloc, path, _, query, fragment = urlparse(self.baseurl)
-        ce = "dap4.ce=" + self.id + hyperslab(index)
-        url = urlunparse((scheme, netloc, path + ".dap", "", ce, fragment)).rstrip("&")
 
+        scheme, netloc, path, _, query, fragment = urlparse(self.baseurl)
+        if self.id.startswith("/"):
+            self.ce = "dap4.ce=" + self.id + hyperslab(index)
+        else:
+            self.ce = "dap4.ce=/" + self.id + hyperslab(index)
+
+        if build_only:
+            # In batch mode: just store CE, don't fetch
+            return self
+        url = urlunparse((scheme, netloc, path + ".dap", "", self.ce, fragment)).rstrip(
+            "&"
+        )
+        if self.checksums:
+            url += "&dap4.checksum=true"
+        else:
+            url += "&dap4.checksum=false"
         # download and unpack data
         logger.info("Fetching URL: %s" % url)
 
+        cache_kwargs = {}
+        if isinstance(self.session, requests_cache.CachedSession):
+            _vars = getattr(self.session.settings.key_fn, "_collapse_vars", None)
+            concat_dim = getattr(self.session.settings.key_fn, "_concat_dim", None)
+            _vars = [] if _vars is None else list(_vars)
+            _vars += [] if concat_dim is None else concat_dim
+            if self.id not in _vars and "debug" not in self.session.cache.cache_name:
+                cache_kwargs = {"skip": True}
         r = GET(
             url,
             self.application,
@@ -506,16 +582,18 @@ class BaseProxyDap4(BaseProxyDap2):
             timeout=self.timeout,
             verify=self.verify,
             get_kwargs=self.get_kwargs,
+            cache_kwargs=cache_kwargs,
         )
 
-        dataset = UNPACKDAP4DATA(r, self.user_charset).dataset
+        dataset = UNPACKDAP4DATA(r, self.checksums, self.user_charset).dataset
+        self._data = dataset[self.id]._data
+        if self.checksums:
+            self.checksums = dataset[self.id].attributes["_DAP4_Checksum_CRC32"]
 
-        self.checksum = dataset[self.id].attributes["checksum"]
-        self.data = dataset[self.id].data
-        return self.data
+        return self._data
 
 
-class SequenceProxy:
+class SequenceProxy(object):
     """A proxy for remote sequences.
 
     This class behaves like a Numpy structured array, proxying the data from a
@@ -616,11 +694,11 @@ class SequenceProxy:
     @property
     def id(self):
         """Return the id of this sequence."""
-        return (
-            ",".join(child.id for child in self.template.children())
-            if self.sub_children
-            else self.template.id
-        )
+        if self.sub_children:
+            id_ = ",".join(child.id for child in self.template.children())
+        else:
+            id_ = self.template.id
+        return id_
 
     def __iter__(self):
         # download and unpack data
@@ -646,7 +724,9 @@ class SequenceProxy:
         last_chunk = find_pattern_in_string_iter(pattern, i)
 
         if last_chunk is None:
-            raise ValueError(f"Could not find data segment in response from {self.url}")
+            raise ValueError(
+                "Could not find data segment in response from {}".format(self.url)
+            )
 
         # Then construct a stream consisting of everything from
         # 'Data:\n' to the end of the chunk + the rest of the stream
@@ -658,38 +738,26 @@ class SequenceProxy:
         return unpack_sequence(stream, self.template)
 
     def __eq__(self, other):
-        return ConstraintExpression(f"{self.id}={encode(other)}")
+        return ConstraintExpression("%s=%s" % (self.id, encode(other)))
 
     def __ne__(self, other):
-        return ConstraintExpression(f"{self.id}!={encode(other)}")
+        return ConstraintExpression("%s!=%s" % (self.id, encode(other)))
 
     def __ge__(self, other):
-        return ConstraintExpression(f"{self.id}>={encode(other)}")
+        return ConstraintExpression("%s>=%s" % (self.id, encode(other)))
 
     def __le__(self, other):
-        return ConstraintExpression(f"{self.id}<={encode(other)}")
+        return ConstraintExpression("%s<=%s" % (self.id, encode(other)))
 
     def __gt__(self, other):
-        return ConstraintExpression(f"{self.id}>{encode(other)}")
+        return ConstraintExpression("%s>%s" % (self.id, encode(other)))
 
     def __lt__(self, other):
-        return ConstraintExpression(f"{self.id}<{encode(other)}")
+        return ConstraintExpression("%s<%s" % (self.id, encode(other)))
 
 
 def unpack_sequence(stream, template):
-    """Unpack data from a sequence, yielding records.
-
-    This function is a generator that yields records from a sequence. The
-    records are unpacked from a stream of bytes, and the template is used to
-    determine the structure of the records.
-
-    Parameters
-    ----------
-    stream : StreamReader
-        A stream of bytes.
-    template : BaseType, SequenceType
-        The template for the sequence.
-    """
+    """Unpack data from a sequence, yielding records."""
     # is this a sequence or a base type?
     sequence = isinstance(template, SequenceType)
 
@@ -713,23 +781,16 @@ def unpack_sequence(stream, template):
         marker = stream.read(4)
         while marker == START_OF_SEQUENCE:
             rec = unpack_children(stream, template)
-            yield tuple(rec) if sequence else rec[0]
+            if not sequence:
+                rec = rec[0]
+            else:
+                rec = tuple(rec)
+            yield rec
             marker = stream.read(4)
 
 
 def unpack_children(stream, template):
-    """Unpack children from a structure, returning their data.
-
-    This function unpacks data from a stream of bytes, and the template is used
-    to determine the structure of the data.
-
-    Parameters
-    ----------
-    stream : StreamReader
-        A stream of bytes.
-    template : StructureType
-        The template for the structure.
-    """
+    """Unpack children from a structure, returning their data."""
     cols = list(template.children()) or [template]
 
     out = []
@@ -747,19 +808,6 @@ def unpack_children(stream, template):
 
 
 def convert_stream_to_list(stream, parser_dtype, shape, id):
-    """Convert a stream of bytes to a list of values.
-
-    Parameters
-    ----------
-    stream : StreamReader
-        A stream of bytes.
-    parser_dtype : numpy.dtype
-        The dtype of the data.
-    shape : tuple
-        The shape of the data.
-    id : str
-        The id of the data.
-    """
     out = []
     response_dtype = DAP2_response_dtypemap(parser_dtype)
     if shape:
@@ -843,6 +891,7 @@ def dump():  # pragma: no cover
     """Unpack dods response into lists.
 
     Return pretty-printed data.
+
     """
     dods = sys.stdin.read()
     dds, xdrdata = dods.split(b"\nData:\n", 1)
@@ -853,13 +902,7 @@ def dump():  # pragma: no cover
 
 
 def decode_chunktype(chunk_type):
-    """Decode the chunk type.
-
-    Parameters
-    ----------
-    chunk_type : int
-        The chunk type.
-
+    """
     Takes the chunk_type from chunk header embeded in the dap response,
     and returns a tuple of
         last_chunk: bool
@@ -878,48 +921,48 @@ def decode_chunktype(chunk_type):
 
 
 def get_count(variable):
-    """Get the count of a variable.
-
-    Parameters
-    ----------
-    variable : VariableType
-        The variable to get the count of.
-    """
     count = int(numpy.array(variable.shape).prod())
     item_size = numpy.dtype(variable.dtype).itemsize
     count = count * item_size
     return count
 
 
-def decode_variable(buffer, start, stop, variable, endian):
-    """Decode a variable.
-
-    Parameters
-    ----------
-    buffer : bytearray
-        The buffer to decode.
-    start : int
-        The start of the buffer.
-    stop : int
-        The stop of the buffer.
-    variable : VariableType
-        The variable to decode.
-    endian : str
-        The endian to use.
-    """
+def decode_variable(buffer, start, variable, endian):
     dtype = variable.dtype
-    dtype = dtype.newbyteorder(endian)
-    data = numpy.frombuffer(buffer[start:stop], dtype=dtype).astype(dtype)
-    data = data.reshape(variable.shape)
-    return data
+    if dtype.kind == "S":
+        DATA = []
+        stop = start
+        for i in range(int(numpy.prod(variable.shape))):
+            string, stop = decode_utf8_string_array(buffer, start=stop)
+            DATA.append(numpy.array(string).astype(dtype.kind))
+        data = numpy.array(DATA).reshape(variable.shape)
+        return data, stop
+    else:
+        stop = get_count(variable) + start
+        dtype = dtype.newbyteorder(endian)
+        data = numpy.frombuffer(buffer[start:stop], dtype=dtype)
+        data = data.reshape(variable.shape)
+        return DapDecodedArray(data), stop
 
 
-def process_chunk(data, offset, chunk_size):
-    """
-    Process a chunk of data
-    """
-    chunk_data = data[offset : offset + chunk_size]
-    return chunk_data
+def decode_utf8_string_array(buffer, start=0):
+    offset = start
+    strings = []
+
+    # 1. Read 8-byte little-endian length
+    length_bytes = buffer[offset : offset + 8]
+    strlen = int.from_bytes(length_bytes, byteorder="little")
+    offset += 8
+
+    # 2. Read the UTF-8 string
+    str_bytes = buffer[offset : offset + strlen]
+    offset += strlen
+
+    # 3. Decode the bytes to Python string (UTF-8)
+    decoded_str = str_bytes.decode("utf-8")
+    strings.append(decoded_str)
+
+    return strings, offset
 
 
 def stream2bytearray(data):
@@ -935,10 +978,11 @@ def stream2bytearray(data):
 
     # Precompute chunk positions
     chunk_positions = []
-    offset = 0
-    while offset < len(data):
+    offset = data.data.tell()  # current position in the stream
+    last = False
+    while not last:
         # Read the chunk header
-        chunk_header = numpy.frombuffer(data[offset : offset + 4], dtype=">u4")[0]
+        chunk_header = numpy.frombuffer(data.slice(offset=offset, n=4), dtype=">u4")[0]
         chunk_size = chunk_header & 0x00FFFFFF
         chunk_type = (chunk_header >> 24) & 0xFF
         last, _, _ = decode_chunktype(chunk_type)
@@ -946,13 +990,13 @@ def stream2bytearray(data):
         offset += 4 + chunk_size
         if last:
             break
+    # Process chunks serially (used to be parallelized- no penalty when serialized).
+    results = []
+    for offset, length in chunk_positions:
+        data.data.seek(offset)
+        results.append(data.data.read(length))
 
-    # Process chunks in parallel
     buffer = bytearray()
-    with ThreadPoolExecutor() as executor:
-        results = list(
-            executor.map(lambda args: process_chunk(data, *args), chunk_positions)
-        )
     # Combine results
     for chunk_data in results:
         buffer.extend(chunk_data)
@@ -982,36 +1026,81 @@ class UNPACKDAP4DATA(object):
             See `pydap.net.get.open_dap_file`
     """
 
-    def __init__(self, r, user_charset="ascii"):
+    def __init__(
+        self,
+        r,
+        checksums=True,
+        user_charset="ascii",
+        output_path: str | None = None,
+        dmrVersion: str | None = None,
+    ):
         self.user_charset = user_charset
-        if isinstance(r, webob_Response):  # a Webob response
-            self.r = r
-            if self.r.content_encoding == "gzip":
-                self.raw = BytesReader(
-                    gzip.GzipFile(fileobj=BytesIO(self.r.body)).read()
-                )
+        self.checksums = checksums
+        self.r = r
+        self.output_path = Path(output_path) if output_path else output_path
+        self.nc = None
+        self._dims_cache: dict[tuple[str, tuple[int, ...]], list[str]] = {}
+        self.dmrVersion = dmrVersion
+
+        try:
+            iterator = self.iter_body()
+            CHUNK_SIZE = 1048576
+            # remote dataset
+            with tempfile.TemporaryFile() as tmp:
+                # write the response to a temporary file
+                # so that we can read it in chunks
+                for chunk in iterator(chunk_size=CHUNK_SIZE):
+                    if chunk:  # filter out keep-alive chunks
+                        tmp.write(chunk)
+                tmp.seek(0)
+                self.raw = BytesReader(tmp)
+                self.dmr, self.endianness = self.safe_dmr_and_data()
+                dataset = dmr_to_dataset(self.dmr, dmrVersion=self.dmrVersion)
+                if self.output_path is not None:
+                    if not HAVE_NETCDF4:
+                        raise ImportError(
+                            "NetCDF4 is required for streaming output. "
+                            "Install with: pip install netCDF4"
+                        )
+                    self._init_netcdf_from_dmr(dataset)
+                self.dataset = self.unpack_dap4_data(dataset)
+        except TypeError:
+            if isinstance(r, webob_Response):
+                self.r = r
+                if self.r.content_encoding == "gzip":
+                    self.raw = BytesReader(
+                        gzip.GzipFile(fileobj=BytesIO(self.r.body)).read()
+                    )
+                else:
+                    self.raw = BytesReader(r.body)
+            elif isinstance(r, BufferedReader):
+                # r comes from reading a local file
+                self.r = webob_Response()  # make empty response
+                self.raw = BytesReader(r.read())
             else:
-                self.raw = BytesReader(r.body)
-        elif isinstance(r, BufferedReader):
-            # r comes from reading a local file
-            self.r = webob_Response()  # make empty response
-            self.raw = BytesReader(r.read())
-        elif isinstance(r, requests.Response):
-            # r comes from reading a remote dataset
-            self.r = r
-            self.raw = BytesReader(r.content)
+                raise TypeError("""
+                    Unrecognized file type object for unpacking dap4 binary data.
+                    Acceptable formats are `webob.response.Response` and
+                    `io.BufferedReader`
+                    """)
+            self.dmr, self.endianness = self.safe_dmr_and_data()
+            # need to split dmr from data
+            dataset = dmr_to_dataset(self.dmr)
+            self.dataset = self.unpack_dap4_data(dataset)
+
+    def iter_body(self):
+        """
+        enables iterate over a response, whether the response
+        if a requests.Response, requests_cache.Response, or
+        httpx.Respose
+        """
+
+        if isinstance(self.r, requests.Response):
+            return self.r.iter_content
+        elif httpx is not None and isinstance(self.r, httpx.Response):
+            return self.r.iter_bytes
         else:
-            raise TypeError(
-                """
-                Unrecognized file type object for unpacking dap4 binary data.
-                Acceptable formats are `webob.response.Response` and
-                `io.BufferedReader`
-                """
-            )
-        self.dmr, self.data, self.endianness = self.safe_dmr_and_data()
-        # need to split dmr from data
-        dataset = dmr_to_dataset(self.dmr)
-        self.dataset = self.unpack_dap4_data(dataset)
+            raise TypeError("Unsupported response type")
 
     def safe_dmr_and_data(self):
         """
@@ -1030,37 +1119,239 @@ class UNPACKDAP4DATA(object):
                 get_charset(self.r, self.user_charset)
             )
         else:
-            dmr = self.raw.read(dmr_length).decode(self.user_charset)
-        data = self.raw.data
+            dmr = self.raw.read(dmr_length)
+            # figure out encoding defined in the xml header
+            match = re.search(rb'encoding=["\']([^"\']+)["\']', dmr)
+            if match:
+                encoding = match.group(1).decode("ascii")
+            else:
+                encoding = self.user_charset
+            dmr = dmr.decode(encoding)
         # get endianness from first chunk
         _, _, endianness = decode_chunktype(chunk_type)
-        return dmr, data, endianness
+        return dmr, endianness
+
+    def _init_netcdf_from_dmr(self, dataset):
+        """Create an empty netCDF4 file from a DMR description.
+
+        Requires the optional dependency `netCDF4`.
+        """
+
+        if not HAVE_NETCDF4:
+            raise ImportError(
+                "The 'netCDF4' package is required to initialize a netCDF file "
+                "from a DMR response. Currently it is not installed."
+            )
+
+        FILL_KEYS = {"missing_value", "fmissing_value"}  # keep _FillValue
+
+        filename = unquote(dataset.name)
+        if "nc4" in filename.split("."):
+            # filename may have nc4.h5 or something
+            # retain only the first extension in name
+            # to avoid nc4.nc4
+            filename = ".".join(filename.split(".nc4")[:-1] + ["nc4"])
+        if not filename.endswith(".nc4"):
+            filename = str(Path(filename).with_suffix("")) + ".nc4"
+
+        self.nc = Dataset(self.output_path / filename, "w")
+
+        # set attributes at dataset level
+        for k, v in dataset.attributes.items():
+            try:
+                self.nc.setncattr(k, v)
+            except TypeError as e:
+                if v is None:
+                    self.nc.setncattr(k, str(v))
+                else:
+                    raise e
+
+        # start at root
+        # create dimensions
+        for name, size in dataset.dimensions.items():
+            self.nc.createDimension(name, size)
+        # create variables
+        for var in dataset.variables():
+            _FillValue = dataset[var].attributes.pop("_FillValue", None)
+            dtype = dataset[var].dtype
+            _dims = [dim.split("/")[1] for dim in dataset[var].dims]
+            args = {
+                "varname": var,
+                "datatype": dtype,
+                "fill_value": _FillValue,
+            }
+            if len(_dims) != len(dataset[var].shape):
+                _dims = self._get_or_create_dims_for_var(var, dataset[var])
+            ncvar = self.nc.createVariable(**args, dimensions=_dims)
+
+            # copy attributes
+            for k, v in dataset[var].attributes.items():
+                if k in {"Maps", "path"}:
+                    continue
+                if k in FILL_KEYS:  # avoid writing multiple fill values
+                    continue
+                ncvar.setncattr(k, v)
+
+        # now identify groups and begin to populate
+        variables = [
+            var for var in walk(dataset, BaseType) if isinstance(var.parent, GroupType)
+        ]
+        groups = list(set([var.parent.id for var in variables]))
+
+        for gr in groups:
+            self.nc.createGroup(unquote(gr[1:]))
+            for dim, size in dataset[gr[1:]].dimensions.items():
+                self.nc[unquote(gr[1:])].createDimension(dim, size)
+
+        for var in variables:
+            parent = unquote(var.parent.id[1:])
+            dtype = var.dtype
+            _FillValue = var.attributes.pop("_FillValue", None)
+            args = {
+                "varname": var.name,
+                "datatype": dtype,
+                "fill_value": _FillValue,
+            }
+
+            _dims = [dim.split("/")[-1] for dim in var.dims]
+            # copy attributes
+            if len(_dims) != len(dataset[var.id].shape):
+                _dims = self._get_or_create_dims_for_var(var, dataset[var.id])
+            ncvar = self.nc[parent].createVariable(**args, dimensions=_dims)
+
+            # copy attributes
+            for k, v in dataset[var.id].attributes.items():
+                if k in {"Maps", "path"}:
+                    continue
+                if k in FILL_KEYS:  # avoid writing multiple fill values
+                    continue
+                ncvar.setncattr(k, v)
+
+    def _next_phony_dim_name(self) -> str:
+        if self.nc is None:
+            raise RuntimeError(
+                "self.nc is not initialized yet; cannot create dimensions."
+            )
+        i = 0
+        while f"dim{i}" in self.nc.dimensions:
+            i += 1
+        return f"dim{i}"
+
+    def _ensure_nc_dim(self, dim_name: str, size: int) -> str:
+        if dim_name not in self.nc.dimensions:
+            self.nc.createDimension(dim_name, size)
+        return dim_name
+
+    def _infer_dims_from_parent(
+        self, parent_dims: dict, shape: tuple[int, ...]
+    ) -> list[str] | None:
+        if not parent_dims:
+            return None
+
+        items = list(parent_dims.items())  # preserve parent ordering if any
+        chosen: list[str] = []
+        used: set[str] = set()
+
+        for axis_size in shape:
+            match = None
+            for name, dim_size in items:
+                if name in used:
+                    continue
+                if int(dim_size) == int(axis_size):
+                    match = name
+                    break
+            if match is None:
+                return None
+            chosen.append(match)
+            used.add(match)
+
+        return chosen
+
+    def _get_or_create_dims_for_var(self, varname: str, data_obj) -> list[str]:
+        """
+        Decide dims for this variable and ensure they exist in the output netCDF.
+        Reuses group-scoped dims when possible.
+        """
+        shape = tuple(int(s) for s in data_obj.shape)
+        rank = len(shape)
+
+        group_path = data_obj.parent.id
+
+        # 1) Honor usable variable dims if present
+
+        var_dims = data_obj.dims
+        if len(var_dims) == rank:
+            parent = getattr(data_obj, "parent", None)
+            parent_dims = getattr(parent, "dimensions", {}) or {}
+            for d, axis_size in zip(var_dims, shape):
+                self._ensure_nc_dim(d, int(parent_dims.get(d, axis_size)))
+            return var_dims
+
+        # 2) Cache hit: same group + same shape
+        key = (group_path, shape)
+        cached = self._dims_cache.get(key)
+        if cached is not None:
+            for d, axis_size in zip(cached, shape):
+                self._ensure_nc_dim(d, axis_size)
+            return cached
+
+        # 3) Infer from parent group dimensions
+        parent = getattr(data_obj, "parent", None)
+        parent_dims = getattr(parent, "dimensions", {}) or {}
+        inferred = self._infer_dims_from_parent(parent_dims, shape)
+        if inferred is not None:
+            for d, axis_size in zip(inferred, shape):
+                self._ensure_nc_dim(d, int(parent_dims.get(d, axis_size)))
+            self._dims_cache[key] = inferred
+            return inferred
+
+        # 4) Fallback: create phony dims, but cache for reuse
+        phony: list[str] = []
+        for axis_size in shape:
+            d = self._next_phony_dim_name()
+            self._ensure_nc_dim(d, axis_size)
+            phony.append(d)
+
+        self._dims_cache[key] = phony
+        return phony
 
     def unpack_dap4_data(self, dataset):
         """
-        Takes a pydap.DatasetType previously created, and populates its
-        variables (BaseType only) with data that is currently in binary form
-        (within a dap response).
+        Takes a pydap.DatasetType previously created, and populates its variables
+        (BaseType only) with data that is currently in binary form (within a dap
+        response).
         """
-        # need self. data and self.dataset
         checksum_dtype = numpy.dtype(self.endianness + "u4")
-        buffer = stream2bytearray(self.data)
+        buffer = stream2bytearray(self.raw)
         start = 0
         for variable in walk(dataset, BaseType):
-            count = get_count(variable)
-            stop = start + count
-            data = decode_variable(
+            data, stop = decode_variable(
                 buffer,
                 start=start,
-                stop=stop,
                 variable=variable,
                 endian=self.endianness,
             )
-            checksum = numpy.frombuffer(
-                buffer[stop : stop + 4], dtype=checksum_dtype
-            ).byteswap("=")
-            variable._set_data(data)
-            variable.attributes["checksum"] = checksum
+            if self.nc is not None:
+                name = variable.id.split("/")[-1]
+                if isinstance(variable.parent, DatasetType):
+                    ncvar = self.nc.variables[name]
+                else:
+                    parent = unquote(variable.parent.id[1:])
+                    ncvar = self.nc[parent].variables[name]
+                # raw packed data from pydap should be written raw
+                ncvar.set_auto_maskandscale(False)
+                ncvar[...] = data
+                variable._set_data(None)
+            else:
+                variable._set_data(data)
+            if self.checksums:
+                checksum = numpy.frombuffer(
+                    buffer[stop : stop + 4], dtype=checksum_dtype
+                )
+                variable.attributes["_DAP4_Checksum_CRC32"] = checksum[0]
+
             # Jump over the 4 byte chunk_header
             start = stop + 4
+        if self.nc is not None:
+            self.nc.close()
         return dataset

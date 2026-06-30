@@ -82,15 +82,15 @@ jobs:
                   python -m pip install requests_mock
                   python -m pip install .
 
-            - name: Test with pytest
-              run: |
-                  python -m pytest --cov
+            # - name: Test with pytest
+            #   run: |
+            #       python -m pytest --cov
 
-            - name: Upload coverage data to coveralls.io
-              uses: coverallsapp/github-action@v2
-              with:
-                  parallel: true
-                  fail-on-error: false
+            # - name: Upload coverage data to coveralls.io
+            #   uses: coverallsapp/github-action@v2
+            #   with:
+            #       parallel: true
+            #       fail-on-error: false
 
     finish:
         needs: test

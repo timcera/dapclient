@@ -10,34 +10,26 @@ KML, WMS, JSON, etc., installed as third-party Python packages that declare the
 
 """
 
-from importlib.metadata import entry_points, version
+from importlib.metadata import entry_points
 
-from dapclient.lib import load_from_entry_point_relative
-from dapclient.model import DatasetType
+from dapclient.lib import __version__
+
+from ..model import DatasetType
 
 
 def load_responses():
     """Load all available responses from the system, returning a dictionary."""
-    # Relative import of responses:
-    package = "dapclient"
-    group_name = "dapclient.response"
+    eps = entry_points(group="dapclient.response")
+    Rs = [r for r in eps if r.module[:5] == "dapclient"]
+    nRs = [r for r in eps if r.module[:5] != "dapclient"]
+    base_dict = dict((r.name, r.load()) for r in Rs)
 
-    entry_points_impl = entry_points()
-    if hasattr(entry_points_impl, "select"):
-        eps = entry_points_impl.select(group=group_name)
-    else:
-        eps = entry_points_impl.get(group_name, [])
-    base_dict = dict(
-        load_from_entry_point_relative(r, package)
-        for r in eps
-        if r.module_name.startswith(package)
-    )
-    opts_dict = {r.name: r.load() for r in eps if not r.module_name.startswith(package)}
+    opts_dict = dict((r.name, r.load()) for r in nRs)
     base_dict.update(opts_dict)
     return base_dict
 
 
-class BaseResponse:
+class BaseResponse(object):
     """A base class for dapclient responses.
 
     A dapclient response is a WSGI application that converts a dataset into any
@@ -62,21 +54,25 @@ class BaseResponse:
 
     def __init__(self, dataset):
         self.dataset = dataset
-        self.headers = [("XDODS-Server", f"dapclient/{version('dapclient')}")]
+        self.headers = [
+            ("OPeNDAP-Server", "dapclient/%s" % __version__),
+        ]
 
     def __call__(self, environ, start_response):
         start_response("200 OK", self.headers)
         return self
 
-    def x_wsgiorg_parsed_response(self, ltype):
+    def x_wsgiorg_parsed_response(self, type):
         r"""Avoid serialization of datasets.
 
-        This function will return the contained dataset if ``ltype`` is a
+        This function will return the contained dataset if ``type`` is a
         ``dapclient.model.DatasetType`` object. Based on this proposal:
 
-        http://wsgi.readthedocs.org/en/latest/specifications/avoiding_serialization.html
+            http://wsgi.readthedocs.org/en/latest/specifications/ \
+                    avoiding_serialization.html
+
         """
-        if ltype is DatasetType:
+        if type is DatasetType:
             return self.dataset
 
     def __iter__(self):

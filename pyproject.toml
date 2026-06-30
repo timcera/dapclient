@@ -14,7 +14,8 @@ dependencies = [
     "beautifulsoup4",
     "numpy",
     "requests",
-    "webob"
+    "webob",
+    "requests-cache"
 ]
 authors = [
     {name = "Tim Cera", email = "tim@cerazone.net"}

@@ -1,15 +1,53 @@
 """Basic functions related to the DAP spec."""
 
-import contextlib
+import base64
 import operator
+import zlib
+from dataclasses import dataclass
 from functools import reduce
 from itertools import zip_longest
 from sys import maxsize as MAXSIZE
-from urllib.parse import quote as quote_
 
 import numpy as np
+import requests
+from requests.utils import quote as quote_
+from requests.utils import unquote as unquote_
 
+from dapclient import __version__
 from dapclient.exceptions import ConstraintExpressionError
+
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover
+
+    class tqdm:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def update(self, n=1):
+            pass
+
+        def set_postfix(self, **kwargs):
+            pass
+
+        @staticmethod
+        def write(msg):
+            print(msg)
+
+
+__dap__ = "2.15"
+
+# when installed in --editable mode, the `__version__` can be a very long str
+# which causes `test_responses_html.py to fail (Content-Length' != '5864'
+# in test_headers). This will work for now.
+
+__version__ = str(__version__)[:5]  # it used to be 3.4.1, len=5.
 
 START_OF_SEQUENCE = b"\x5a\x00\x00\x00"
 END_OF_SEQUENCE = b"\xa5\x00\x00\x00"
@@ -51,10 +89,10 @@ NUMPY_TO_DAP2_TYPEMAP = {
 
 # DAP2 demands big-endian 32 bytes signed integers
 # www.opendap.org/pdf/dap_2_data_model.pdf
-# Before pydap 3.2.2, length was
+# Before dapclient 3.2.2, length was
 # big-endian 32 bytes UNSIGNED integers:
 # DAP2_ARRAY_LENGTH_NUMPY_TYPE = '>I'
-# Since pydap 3.2.2, the length type is accurate:
+# Since dapclient 3.2.2, the length type is accurate:
 DAP2_ARRAY_LENGTH_NUMPY_TYPE = ">i"
 
 DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
@@ -74,19 +112,19 @@ DAP2_TO_NUMPY_RESPONSE_TYPEMAP = {
     # The consequence is that there is no natural way
     # in DAP2 to represent numpy's 'b' type.
     # Ideally, DAP2 would have a signed Byte type
-    # and a unsigned UByte type and we would have the
+    # and a usigned UByte type and we would have the
     # following mapping: {'Byte': 'b', 'UByte': 'B'}
     # but this not how the protocol has been defined.
     # This means that DAP2 Byte is unsigned and must be
     # mapped to numpy's 'B' type, usigned byte.
     "Byte": "B",
-    # Map String to numpy's string type 'S' because
+    # Map String to numpy's string type 'S' b/c
     # DAP2 does not explicitly support unicode.
     "String": "S",
     "URL": "S",
     #
     # These two types are not DAP2 but it is useful
-    # to include them for compatibility with other
+    # to include them for compatiblity with other
     # data sources:
     "Int": ">i",
     "UInt": ">I",
@@ -102,8 +140,6 @@ LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
     "uint16": ">H",
     "int32": ">i",
     "uint32": ">I",
-    # "int8": ">b",  # DAP2 does not support signed bytes
-    "uint8": ">B",
     "byte": "B",
     "string": STRING,
     "url": STRING,
@@ -112,86 +148,104 @@ LOWER_DAP2_TO_NUMPY_PARSER_TYPEMAP = {
 }
 
 # Typemap from lower case DAP4 types to
-# numpy dtype string with specified endianiness.
+# numpy dtype string with specified endiannes.
 # Here, the endianness is very important:
 DAP4_TO_NUMPY_PARSER_TYPEMAP = {
-    "Float16": ">f2",
-    "Float32": ">f4",
-    "Float64": ">f8",
-    "Int8": ">i1",
-    "UInt8": ">u1",
-    "Int16": ">i2",
-    "UInt16": ">u2",
-    "Int32": ">i4",
-    "UInt32": ">u4",
-    "Int64": ">i8",
-    "UInt64": ">u8",
+    "Float16": "f2",
+    "Float32": "f4",
+    "Float64": "f8",
+    "Int8": "i1",
+    "UInt8": "u1",
+    "Int16": "i2",
+    "UInt16": "u2",
+    "Int32": "i4",
+    "UInt32": "u4",
+    "Int64": "i8",
+    "UInt64": "u8",
     "Byte": "B",
     "String": STRING,
     "Url": STRING,
+    "Char": "u1",
+}
+
+NUMPY_TO_DAP4_TYPEMAP = {
+    ("b", 1): "UInt8",
+    ("i", 1): "Int8",
+    ("u", 1): "UInt8",
+    ("i", 2): "Int16",
+    ("u", 2): "UInt16",
+    ("i", 4): "Int32",
+    ("u", 4): "UInt32",
+    ("i", 8): "Int64",
+    ("u", 8): "UInt64",
+    ("f", 4): "Float32",
+    ("f", 8): "Float64",
+    ("S", None): "String",
+    ("U", None): "String",
 }
 
 
-def quote(name):
+def _quote(name):
     """Return quoted name according to the DAP specification.
 
-    Parameters
-    ----------
-    name : str
-        Name to quote.
-
-    Examples
-    --------
-    >>> quote("White space")
+    >>> _quote("White space")
     'White%20space'
-    >>> quote("Period.")
+    >>> _quote("Period.")
     'Period%2E'
+
     """
     safe = "%_!~*'-\"/"
-    return quote_(name.encode("utf-8"), safe=safe).replace(".", "%2E")
+    if "dap4" == name[:4]:
+        # Dap4 protocol. Must not scape = sign there.
+        prefix = name[:8]
+        name = name[8:]
+    else:
+        prefix = ""
+    name = quote_(name.encode("utf-8"), safe=safe).replace(".", "%2E")
+    return prefix + name.replace("[", "%5B").replace("]", "%5D")
+
+
+def unquote(name):
+    """Return unquoted name according to the DAP specification.
+
+    >>> unquote("White%20space")
+    'White space'
+    >>> unquote("Period%2E")
+    'Period.'
+
+    """
+    name = name.replace("%2E", ".").replace("%5B", "[").replace("%5D", "]")
+    return unquote_(name)
 
 
 def encode(obj):
-    """Return an object encoded to its DAP representation.
+    """Return an object encoded to its DAP representation."""
+    # fix for Python 3.5, where strings are being encoded as numbers
+    if isinstance(obj, str) or isinstance(obj, np.ndarray) and obj.dtype.char in "SU":
+        return '"{0}"'.format(obj)
 
-    Parameters
-    ----------
-    obj : object
-        Object to encode.
-    """
-    with contextlib.suppress(TypeError):
-        if np.all(np.isnan(obj)):
-            return "NaN"
-    if isinstance(obj, np.ndarray) and obj.dtype.char in "SU":
-        return f'"{obj}"'
-
-    try:
-        return f"{obj:.6g}"
-    except (ValueError, TypeError):
-        return f'"{obj}"'
+    # fix for DeprecationWarning: Conversion of an array with ndim > 0 to a
+    # scalar is deprecated
+    if isinstance(obj, np.ndarray) and np.ndim(obj) > 0:
+        arr_str = np.array2string(obj, formatter={"float_kind": lambda x: f"{x:.6f}"})
+        return f'"[{arr_str[1:-1]}]"'
+    else:
+        try:
+            return "%.6g" % obj
+        except Exception:
+            return '"{0}"'.format(obj)
 
 
-def fix_slice(slice_, shape):
+def fix_slice(slice_, shape, projection=False):
     """Return a normalized slice.
 
     This function returns a slice so that it has the same length of `shape`,
     and no negative indexes, if possible.
 
     This is based on this document:
-    http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
 
-    Parameters
-    ----------
-    slice_ : slice or tuple of slices
-        Slice to normalize.
-    shape : tuple of ints
-        Shape of the array being sliced.
+        https://numpy.org/doc/stable/user/basics.indexing.html#slicing-and-striding
 
-    Returns
-    -------
-    fix_slice : tuple of slices
-        This function returns a slice so that it has the same length of
-        `shape`, and no negative indexes, if possible.
     """
     # convert `slice_` to a tuple
     if not isinstance(slice_, tuple):
@@ -200,34 +254,35 @@ def fix_slice(slice_, shape):
     # expand Ellipsis and make `slice_` at least as long as `shape`
     expand = len(shape) - len(slice_)
     out = []
-    for sli in slice_:
-        if sli is Ellipsis:
+    for s in slice_:
+        if s is Ellipsis:
             out.extend((slice(None),) * (expand + 1))
             expand = 0
         else:
-            out.append(sli)
+            out.append(s)
     slice_ = tuple(out) + (slice(None),) * expand
-
     out = []
-    for slic, shp in zip(slice_, shape):
-        if isinstance(slic, int):
-            if slic < 0:
-                slic += shp
-            out.append(slic)
+    for s, N in zip(slice_, shape):
+        if isinstance(s, int):
+            if s < 0:
+                s += N
+            out.append(s)
         else:
-            k = slic.step or 1
-
-            i = slic.start
+            k = s.step or 1
+            i = s.start
             if i is None:
                 i = 0
             elif i < 0:
-                i += shp
+                i += N
 
-            j = slic.stop
-            if j is None or j > shp:
-                j = shp
+            j = s.stop
+            if j is None or j >= N:
+                if projection:
+                    j = N + i
+                else:
+                    j = N
             elif j < 0:
-                j += shp
+                j += N
 
             out.append(slice(i, j, k))
 
@@ -239,14 +294,8 @@ def combine_slices(slice1, slice2):
 
     These two should be equal:
 
-    x[ combine_slices(s1, s2) ] == x[s1][s2]
+        x[ combine_slices(s1, s2) ] == x[s1][s2]
 
-    Parameters
-    ----------
-    slice1 : tuple of slices
-        First slice.
-    slice2 : tuple of slices
-        Second slice.
     """
     out = []
     for exp1, exp2 in zip_longest(slice1, slice2, fillvalue=slice(None)):
@@ -272,38 +321,57 @@ def combine_slices(slice1, slice2):
 
 
 def hyperslab(slice_):
-    """Return a DAP representation of a multidimensional slice.
+    """Return a DAP representation of a multidimensional slice."""
+    if not isinstance(slice_, tuple):
+        slice_ = [slice_]
+    else:
+        slice_ = list(slice_)
 
-    Parameters
-    ----------
-    slice_ : tuple of slices
-        Slice to convert to DAP representation.
-    """
-    slice_ = list(slice_) if isinstance(slice_, tuple) else [slice_]
     while slice_ and slice_[-1] == slice(None):
         slice_.pop(-1)
 
     return "".join(
-        f"[{s.start or 0}:{s.step or 1}:{(s.stop or MAXSIZE) - 1}]" for s in slice_
+        "[%s:%s:%s]" % (s.start or 0, s.step or 1, (s.stop or MAXSIZE) - 1)
+        for s in slice_
     )
 
 
-def walk(var, ltype=object):
+def walk(var, type=object):
     """Yield all variables of a given type from a dataset.
 
     The iterator returns also the parent variable.
 
-    Parameters
-    ----------
-    var : object
-        Variable to start the walk from.
-    ltype : type
-        Type of the variables to yield.
     """
-    if isinstance(var, ltype):
+    if isinstance(var, type):
         yield var
     for child in var.children():
-        yield from walk(child, ltype)
+        for subvar in walk(child, type):
+            yield subvar
+
+
+def tree(template, prefix=""):
+    # Print the current node's name, add '.' at the root level
+    if prefix == "":
+        print(f".{unquote_(template.name)}")
+    else:
+        print(f"{unquote_(template.name)}")
+
+    # Iterate over the children
+    Nchild = len([child for child in template.children()])
+    for i, child in enumerate(template.children()):
+        # Determine the prefix for the current child
+        if i == Nchild - 1:
+            child_prefix = "└──"
+            next_prefix = "   "
+        else:
+            child_prefix = "├──"
+            next_prefix = "│  "
+
+        # Print the current child
+        print(prefix + child_prefix, end="")
+
+        # Recursively call tree on the child with updated prefix
+        tree(child, prefix + next_prefix)
 
 
 def fix_shorthand(projection, dataset):
@@ -313,22 +381,16 @@ def fix_shorthand(projection, dataset):
     the "shorthand notation", and it has to be fixed. This function will return
     a new projection with no shorthand calls.
 
-    Parameters
-    ----------
-    projection : list of lists of tuples
-        Projection to fix.
-    dataset : DatasetType
-        Dataset to use to fix the shorthand notation.
     """
     out = []
     for var in projection:
         if len(var) == 1 and var[0][0] not in list(dataset.keys()):
             token, slice_ = var.pop(0)
             for child in walk(dataset):
-                if token == child.name:
+                if token == unquote(child.name):
                     if var:
                         raise ConstraintExpressionError(
-                            f"Ambiguous shorthand notation request: {token}"
+                            "Ambiguous shorthand notation request: %s" % token
                         )
                     var = [(parent, ()) for parent in child.id.split(".")[:-1]] + [
                         (token, slice_)
@@ -338,88 +400,153 @@ def fix_shorthand(projection, dataset):
 
 
 def get_var(dataset, id_):
-    """Given an id, return the corresponding variable from the dataset.
-
-    Parameters
-    ----------
-    dataset : DatasetType
-        Dataset to use to get the variable.
-    id_ : str
-        Id of the variable to get.
-    """
+    """Given an id, return the corresponding variable from the dataset."""
     tokens = id_.split(".")
     return reduce(operator.getitem, [dataset] + tokens)
 
 
 def decode_np_strings(numpy_var):
-    """Given a fixed-width numpy string, decode it to a unicode type.
-
-    Parameters
-    ----------
-    numpy_var : numpy.ndarray
-        Numpy array to decode.
-    """
-    if isinstance(numpy_var, bytes) and hasattr(numpy_var, "tobytes"):
-        return numpy_var.tobytes().decode("utf-8")
-    return numpy_var
+    """Given a fixed-width numpy string, decode it to a unicode type"""
+    if isinstance(numpy_var, (bytes, np.bytes_)):
+        return numpy_var.decode("utf-8")
+    else:
+        return numpy_var
 
 
-def load_from_entry_point_relative(rel, package):
-    """Load a class from an entry point relative to a package.
-
-    Parameters
-    ----------
-    rel : pkg_resources.EntryPoint
-        Entry point to load.
-    package : str
-        Package to use as a reference.
-    """
-    try:
-        loaded = getattr(
-            __import__(
-                rel.module_name.replace(f"{package}.", "", 1),
-                globals(),
-                None,
-                [rel.attrs[0]],
-                1,
-            ),
-            rel.attrs[0],
-        )
-        return rel.name, loaded
-    except ImportError:
-        # This is only used in handlers testing:
-        return rel.name, rel.load()
-
-
-class StreamReader:
+class StreamReader(object):
     """Class to allow reading a `urllib3.HTTPResponse`."""
 
     def __init__(self, stream):
         self.stream = stream
         self.buf = bytearray()
 
-    def read(self, num):
-        """Read and return `num` bytes."""
-        while len(self.buf) < num:
+    def read(self, n):
+        """Read and return `n` bytes."""
+        while len(self.buf) < n:
             bytes_read = next(self.stream)
             self.buf.extend(bytes_read)
 
-        out = bytes(self.buf[:num])
-        self.buf = self.buf[num:]
+        out = bytes(self.buf[:n])
+        self.buf = self.buf[n:]
         return out
 
 
-class BytesReader:
+class old_BytesReader(object):
     """Class to allow reading a `bytes` object."""
 
     def __init__(self, data):
         self.data = data
 
-    def read(self, num):
-        """Read and return `num` bytes."""
-        out = self.data[:num]
-        self.data = self.data[num:]
+    def read(self, n):
+        """Read and return `n` bytes."""
+        out = self.data[:n]
+        self.data = self.data[n:]
         return out
 
-    def peek(self, num):
-        return self.data[:num]
+    def peek(self, n):
+        return self.data[:n]
+
+
+class BytesReader:
+    """Class to allow reading from a file-like object or bytes."""
+
+    def __init__(self, source):
+        if isinstance(source, (bytes, bytearray)):
+            import io
+
+            self.data = io.BytesIO(source)
+        elif hasattr(source, "read"):
+            self.data = source
+        else:
+            raise TypeError("Expected bytes or a file-like object with .read()")
+
+    def read(self, n):
+        return self.data.read(n)
+
+    def peek(self, n):
+        import io
+
+        if isinstance(self.data, io.BytesIO):
+            current_pos = self.data.tell()
+            out = self.data.read(n)
+            self.data.seek(current_pos)
+            return out
+        elif hasattr(self.data, "peek"):
+            return self.data.peek(n)
+        else:
+            # Manual peek fallback: read + seek back (requires seekable stream)
+            current_pos = self.data.tell()
+            out = self.data.read(n)
+            self.data.seek(current_pos)
+            return out
+
+    def slice(self, offset, n):
+        """Mimics buffer[offset:offset+n] for file-like object"""
+        pos = self.data.tell()
+        self.data.seek(offset)
+        buf = self.data.read(n)
+        self.data.seek(pos)
+        return buf
+
+
+@dataclass(frozen=True)
+class Failure:
+    url: str
+    exc_type: str
+    message: str
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """
+    Conservative retry classifier.
+
+    - Don't retry obvious permanent/user errors (auth, invalid args).
+    - Do retry transient runtime issues (timeouts, intermittent I/O, some
+        HDF5 weirdness).
+    """
+    # Your own validation / programmer errors: usually permanent
+    if isinstance(exc, (ValueError, TypeError)):
+        return False
+
+    # Requests errors are usually transient; but auth/404 are not
+    if isinstance(exc, requests.HTTPError):
+        resp = getattr(exc, "response", None)
+        code = getattr(resp, "status_code", None)
+        if code in (401, 403, 404):
+            return False
+        return True
+
+    # Many intermittent FS/HDF5 issues surface as OSError/RuntimeError
+    if isinstance(exc, (OSError, RuntimeError)):
+        msg = str(exc).lower()
+        # Don't retry "out of space"
+        if "no space left" in msg or "enospc" in msg:
+            return False
+        return True
+
+    # Default: retry once (conservative)
+    return True
+
+
+def b64_to_bytes(s: str) -> bytes:
+    # base64 sometimes contains whitespace/newlines
+    return base64.b64decode("".join(s.split()))
+
+
+def inflate(data: bytes) -> bytes:
+    """
+    Try zlib-wrapped DEFLATE first (common when strings start with eJw...),
+    then raw DEFLATE as a fallback.
+    """
+    try:
+        return zlib.decompress(data)  # zlib header (your sample works with this)
+    except zlib.error:
+        return zlib.decompress(data, wbits=-15)  # raw deflate
+
+
+def decode_missingdata(text: str) -> bytes:
+    return inflate(b64_to_bytes(text))
+
+
+def decode_compact(text: str) -> bytes:
+    return b64_to_bytes(text)

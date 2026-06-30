@@ -31,9 +31,9 @@ CORS_RESPONSES = ["dds", "das", "dods", "ver", "json", "dmr"]
 
 def load_handlers():
     r"""Load all handlers, returning them on a list."""
-    eps = entry_points(group="pydap.handler")
-    Rs = [r for r in eps if r.module[:5] == "pydap"]
-    nRs = [r for r in eps if r.module[:5] != "pydap"]
+    eps = entry_points(group="dapclient.handler")
+    Rs = [r for r in eps if r.module[:5] == "dapclient"]
+    nRs = [r for r in eps if r.module[:5] != "dapclient"]
     base_dict = {r.name: r.load() for r in Rs}
 
     opts_dict = {r.name: r.load() for r in nRs}

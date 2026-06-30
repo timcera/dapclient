@@ -1,5 +1,11 @@
 ## v2.0.0 (2026-06-30)
 
+## v1.0.7 (2026-06-30)
+
+### Fix
+
+- deprecating/archiving dapclient
+
 ## v1.0.6 (2024-11-24)
 
 ### Fix

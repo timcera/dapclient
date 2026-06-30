@@ -50,13 +50,13 @@ jobs:
                       pandas-versions: 2.2.0
                     - os: ubuntu-latest
                       python-versions: '3.12'
-                      pandas-versions: 2.2.0
+                      pandas-versions: 2.0.0
                     - os: ubuntu-latest
                       python-versions: '3.12'
                       pandas-versions: 1.5.3
                     - os: macos-latest
                       python-versions: '3.12'
-                      pandas-versions: 2.2.0
+                      pandas-versions: 2.0.0
                     - os: macos-latest
                       python-versions: '3.12'
                       pandas-versions: 1.5.3

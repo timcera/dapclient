@@ -47,7 +47,14 @@ class DDSParser(SimpleParser):
         """Parse the DAS, returning a dataset."""
         dataset = DatasetType("nameless")
 
-        self._extracted_from_structure_5("dataset", dataset)
+        self.consume("dataset")
+        self.consume("{")
+        while not self.peek("}"):
+            var = self.declaration()
+            dataset[var.name] = var
+        self.consume("}")
+
+        dataset.name = quote(self.consume("[^;]+"))
         dataset._set_id(dataset.name)
         self.consume(";")
 
@@ -96,28 +103,33 @@ class DDSParser(SimpleParser):
     def sequence(self):
         """Parse a DAS sequence, returning a ``SequenceType``."""
         sequence = SequenceType("nameless")
-        return self._extracted_from_structure_4("sequence", sequence)
+        self.consume("sequence")
+        self.consume("{")
+
+        while not self.peek("}"):
+            var = self.declaration()
+            sequence[var.name] = var
+        self.consume("}")
+
+        sequence.name = quote(self.consume("[^;]+"))
+        self.consume(";")
+        return sequence
 
     def structure(self):
         """Parse a DAP structure, returning a ``StructureType``."""
         structure = StructureType("nameless")
-        return self._extracted_from_structure_4("structure", structure)
-
-    # TODO Rename this here and in `parse`, `sequence` and `structure`
-    def _extracted_from_structure_4(self, arg0, arg1):
-        self._extracted_from_structure_5(arg0, arg1)
-        self.consume(";")
-        return arg1
-
-    # TODO Rename this here and in `parse`, `sequence` and `structure`
-    def _extracted_from_structure_5(self, arg0, arg1):
-        self.consume(arg0)
+        self.consume("structure")
         self.consume("{")
+
         while not self.peek("}"):
             var = self.declaration()
-            arg1[var.name] = var
+            structure[var.name] = var
         self.consume("}")
-        arg1.name = quote(self.consume("[^;]+"))
+
+        structure.name = quote(self.consume("[^;]+"))
+        self.consume(";")
+
+        return structure
 
     def grid(self):
         """Parse a DAP grid, returning a ``GridType``."""

@@ -47,7 +47,7 @@ def test_registration_esgf_auth():
 @pytest.mark.prod_url
 @pytest.mark.skipif(
     not (os.environ.get("OPENID_ESGF") and os.environ.get("PASSWORD_ESGF")),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_basic_esgf_auth():
     """
@@ -73,7 +73,7 @@ def test_basic_esgf_auth():
 @pytest.mark.prod_url
 @pytest.mark.skipif(
     not (os.environ.get("OPENID_ESGF") and os.environ.get("PASSWORD_ESGF")),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_dimension_esgf_query():
     session = esgf.setup_session(
@@ -94,7 +94,7 @@ def test_dimension_esgf_query():
 @pytest.mark.prod_url
 @pytest.mark.skipif(
     not (os.environ.get("OPENID_ESGF") and os.environ.get("PASSWORD_ESGF")),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_variable_esgf_query():
     session = esgf.setup_session(
@@ -118,7 +118,7 @@ def test_variable_esgf_query():
         and os.environ.get("USERNAME_ESGF_CEDA")
         and os.environ.get("PASSWORD_ESGF_CEDA")
     ),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_variable_esgf_query_ceda():
     session = esgf.setup_session(

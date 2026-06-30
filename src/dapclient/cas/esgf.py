@@ -65,7 +65,7 @@ def _uri(openid):
                 "openid_identifier=" + quote_plus(openid)
             )
         except TypeError:
-            raise UserWarning("OPENID was not set. " "ESGF connection cannot succeed.")
+            raise UserWarning("OPENID was not set. ESGF connection cannot succeed.")
         return [url, None] if _get_node(openid) == "https://ceda.ac.uk" else url
 
     return generate_url

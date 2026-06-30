@@ -11,18 +11,13 @@ import itertools
 import operator
 import re
 import sys
+from importlib.metadata import entry_points
 
 import numpy as np
 from webob import Request
 
 from dapclient.exceptions import ConstraintExpressionError, ExtensionNotSupportedError
-from dapclient.lib import (
-    encode,
-    fix_shorthand,
-    get_var,
-    load_from_entry_point_relative,
-    walk,
-)
+from dapclient.lib import encode, fix_shorthand, get_var, walk
 from dapclient.model import BaseType, DatasetType, GridType, SequenceType, StructureType
 from dapclient.parsers import parse_ce, parse_selection
 from dapclient.responses.error import ErrorResponse
@@ -31,59 +26,35 @@ from dapclient.responses.lib import load_responses
 # buffer size in bytes, for streaming data
 BUFFER_SIZE = 2**27
 
-CORS_RESPONSES = ["dds", "das", "dods", "ver", "json"]
+CORS_RESPONSES = ["dds", "das", "dods", "ver", "json", "dmr"]
 
 
 def load_handlers():
-    r"""Load all handlers, returning them on a list.  Haven't used this
-    function yet, but it's here for future use."""
-    # Relative import of handlers:
-    group_name = None
+    r"""Load all handlers, returning them on a list."""
+    eps = entry_points(group="pydap.handler")
+    Rs = [r for r in eps if r.module[:5] == "pydap"]
+    nRs = [r for r in eps if r.module[:5] != "pydap"]
+    base_dict = {r.name: r.load() for r in Rs}
 
-    package = "dapclient"
-    entry_points = "dapclient.handler"
-
-    entry_points_impl = entry_points()
-    if hasattr(entry_points_impl, "select"):
-        eps = entry_points_impl.select(group=group_name)
-    else:
-        eps = entry_points_impl.get(group_name, [])
-    base_dict = dict(
-        load_from_entry_point_relative(r, package)
-        for r in eps
-        if r.module_name.startswith(package)
-    )
-    opts_dict = {r.name: r.load() for r in eps if not r.module_name.startswith(package)}
+    opts_dict = {r.name: r.load() for r in nRs}
     base_dict.update(opts_dict)
     return base_dict.values()
 
 
 def get_handler(filepath, handlers=None, instantiate=True):
-    """Given a filepath, return the corresponding instantiated handler.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the file to be handled.
-    handlers : list
-        List of handlers to be checked. If not provided, all handlers are
-        loaded.
-    instantiate : bool
-        If True, return an instance of the handler. If False, return None if
-        the extension is supported, or raise an exception if not.
-
-    Returns
-    -------
-    handler : BaseHandler
-        Handler instance, if ``instantiate`` is True.
-    """
+    """Given a filepath, return the corresponding instantiated handler."""
     # Check each handler to see which one handles this file.
     for handler in handlers or load_handlers():
         p = re.compile(handler.extensions)
         if p.match(filepath):
             # only check if extension is supported - don't return instance
-            return handler(filepath) if instantiate else None
-    raise ExtensionNotSupportedError(f"No handler available for file {filepath}.")
+            if not instantiate:
+                return None
+            return handler(filepath)
+
+    raise ExtensionNotSupportedError(
+        "No handler available for file {filepath}.".format(filepath=filepath)
+    )
 
 
 class BaseHandler:
@@ -490,13 +461,11 @@ def build_filter(expression, template):
             col = keys.index(token)
             target = target[token]
         a = operator.itemgetter(col)
-    except Exception as exc:
+    except Exception:
         raise ConstraintExpressionError(
-            f"""
-            Invalid constraint expression: "{expression}"
-            ("{id1}" is not a valid variable)
-            """
-        ) from exc
+            'Invalid constraint expression: "{expression}" '
+            '("{id}" is not a valid variable)'.format(expression=expression, id=id1)
+        )
 
     # if we're comparing two variables they must be on the same sequence, so
     # ``parent1`` must be equal to ``parent2``
@@ -511,13 +480,11 @@ def build_filter(expression, template):
             def b(row):
                 return value
 
-        except Exception as exc:
+        except Exception:
             raise ConstraintExpressionError(
-                f"""
-                Invalid constraint expression: "{expression}"
-                ("{id2}" is not valid)
-                """
-            ) from exc
+                'Invalid constraint expression: "{expression}" '
+                '("{id}" is not valid)'.format(expression=expression, id=id2)
+            )
 
     op = {
         "<": operator.lt,

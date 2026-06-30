@@ -18,11 +18,6 @@
     :target: https://pypi.python.org/pypi/dapclient/
     :height: 20
 
-.. image:: http://img.shields.io/pypi/dd/dapclient.svg
-    :alt: dapclient downloads
-    :target: https://pypi.python.org/pypi/dapclient/
-    :height: 20
-
 .. image:: https://img.shields.io/pypi/pyversions/dapclient
     :alt: PyPI - Python Version
     :target: https://pypi.org/project/dapclient/

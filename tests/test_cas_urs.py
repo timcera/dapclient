@@ -20,7 +20,7 @@ test_url_2 = url + ".dods?PS[0:1:0][0:1:10][0:1:10]"
 @pytest.mark.prod_url
 @pytest.mark.skipif(
     not (os.environ.get("USERNAME_URS") and os.environ.get("PASSWORD_URS")),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_basic_urs_auth():
     """
@@ -53,7 +53,7 @@ def test_basic_urs_auth():
 @pytest.mark.prod_url
 @pytest.mark.skipif(
     not (os.environ.get("USERNAME_URS") and os.environ.get("PASSWORD_URS")),
-    reason=("Without auth credentials, " "this test cannot work"),
+    reason=("Without auth credentials, this test cannot work"),
 )
 def test_basic_urs_query():
     session = urs.setup_session(

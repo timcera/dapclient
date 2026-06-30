@@ -11,10 +11,10 @@ name = "dapclient"
 dynamic = ["readme", "version"]
 description = "A client-only fork of pydap using the DAP protocol to access scientific data on the internet."
 dependencies = [
+    "beautifulsoup4",
     "numpy",
     "requests",
-    "webob",
-    "beautifulsoup4"
+    "webob"
 ]
 authors = [
     {name = "Tim Cera", email = "tim@cerazone.net"}

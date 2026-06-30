@@ -18,15 +18,21 @@
     :target: https://pypi.python.org/pypi/dapclient/
     :height: 20
 
-.. image:: http://img.shields.io/pypi/dd/dapclient.svg
-    :alt: dapclient downloads
-    :target: https://pypi.python.org/pypi/dapclient/
-    :height: 20
-
 .. image:: https://img.shields.io/pypi/pyversions/dapclient
     :alt: PyPI - Python Version
     :target: https://pypi.org/project/dapclient/
     :height: 20
+
+::
+
+    ARCHIVED!  Please use pydap instead.
+
+    I forked this from pydap because for a long time pydap wasn't maintained
+    and didn't have working pypi or conda-forge packages.  Since then pydap
+    contributors have made incredible progress on pydap, way beyond what
+    I could hope to add or support in dapclient.  So I am deprecating/archiving
+    the dapclient project.  I have already moved my tsgettoolbox to using
+    pydap.
 
 dapclient - Quick Guide
 =======================
